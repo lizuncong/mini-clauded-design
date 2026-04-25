@@ -12,7 +12,9 @@ const fsTools = {
   write_file: {
     name: 'write_file',
     description: `Write content to a file in the project. Creates parent directories automatically.
-Use for HTML, CSS, JS, or any text file. Overwrites if the file already exists.`,
+Supports all file types: HTML pages, CSS stylesheets, JavaScript modules, and any text files.
+For modular projects: write index.html as entry point (referencing external CSS/JS via relative paths), then write styles/*.css and js/*.js separately.
+Overwrites if file already exists.`,
     input_schema: {
       type: 'object',
       properties: {

@@ -74,46 +74,142 @@
 
     /* 左侧：聊天面板 */
     #chat-panel {
-      width: 360px; min-width: 280px;
+      width: 420px; min-width: 320px;
       display: flex; flex-direction: column;
-      border-right: 1px solid #2a2a4a; background: #16213e;
+      border-right: 1px solid #2a2a4a; background: #0f1219;
     }
     #chat-header {
-      padding: 12px 16px; font-size: 13px; font-weight: 600;
-      color: #8bb4f9; border-bottom: 1px solid #2a2a4a; background: #0f3460;
+      padding: 14px 18px; font-size: 13px; font-weight: 600;
+      color: #8bb4f9; border-bottom: 1px solid #1e2a3e; background: #141b2d;
       display: flex; align-items: center; gap: 8px;
     }
     #chat-header::before { content: ''; width: 7px; height: 7px; background: #7ec699; border-radius: 50%; }
     #chat-log {
-      flex: 1; overflow-y: auto; padding: 12px;
-      font-size: 13px; line-height: 1.65; white-space: pre-wrap; word-break: break-word;
+      flex: 1; overflow-y: auto; padding: 16px;
+      display: flex; flex-direction: column; gap: 12px;
     }
-    .msg-user { color: #8bb4f9; margin-bottom: 6px; }
-    .msg-user::before { content: '> '; color: #5a8bd4; }
-    .msg-assistant { color: #d4a6e0; }
-    .msg-tool-call { color: #7ec699; font-size: 12px; padding-left: 12px; }
-    .msg-tool-result { color: #e6c07b; font-size: 12px; padding-left: 12px; }
-    .msg-system { color: #666; font-style: italic; font-size: 12px; }
-    .msg-done { color: #58a6ff; border-top: 1px solid #2a2a4a; margin-top: 8px; padding-top: 8px; font-size: 12px; }
-    .msg-error { color: #f56c6c; }
+
+    /* 消息行（左右布局） */
+    .msg-row { display: flex; width: 100%; }
+    .msg-row-user { justify-content: flex-end; }
+    .msg-row-ai { justify-content: flex-start; }
+
+    /* 消息气泡基础 */
+    .msg-bubble {
+      max-width: 88%; padding: 10px 14px;
+      border-radius: 16px; font-size: 13px; line-height: 1.6;
+      word-break: break-word; position: relative;
+    }
+
+    /* 用户消息 — 右侧蓝色气泡 */
+    .msg-user {
+      background: linear-gradient(135deg, #1a56db, #1e40af);
+      color: #fff; border-bottom-right-radius: 4px;
+      font-weight: 500;
+    }
+
+    /* AI 思考状态 — 左侧暗色小字 */
+    .msg-thinking {
+      background: transparent; color: #5a6a7e;
+      font-size: 12px; padding: 6px 12px;
+      border-radius: 12px; font-style: italic;
+      max-width: 200px;
+    }
+    .msg-thinking::before { content: '💡 '; }
+
+    /* AI 回复 — 左侧深色气泡 */
+    .msg-assistant {
+      background: #1c2538; color: #d4dce8;
+      border-bottom-left-radius: 4px;
+      white-space: pre-wrap;
+    }
+
+    /* 流式输出光标 */
+    .msg-assistant.msg-streaming .cursor {
+      display: inline-block; width: 7px; height: 15px;
+      background: #8bb4f9; margin-left: 2px;
+      vertical-align: text-bottom; animation: blink 0.7s step-end infinite;
+    }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    /* 工具调用 — 可折叠卡片 */
+    .msg-tool {
+      background: #151d2c; border: 1px solid #243049;
+      border-radius: 10px; overflow: hidden;
+      margin-top: 4px; max-width: 88%;
+    }
+    .msg-tool-header {
+      display: flex; align-items: center; gap: 6px;
+      padding: 7px 12px; cursor: pointer;
+      user-select: none; transition: background 0.15s;
+      font-size: 12px;
+    }
+    .msg-tool-header:hover { background: #1a2436; }
+    .msg-tool-icon { flex-shrink: 0; font-size: 13px; }
+    .msg-tool-name { font-weight: 600; }
+    .msg-tool-summary { color: #8899aa; font-size: 11px;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; margin-right: 8px;
+    }
+    .msg-tool-toggle { 
+      color: #556677; font-size: 11px; transition: transform 0.2s;
+      flex-shrink: 0; width: 16px; text-align: center;
+    }
+    .msg-tool.expanded .msg-tool-toggle { transform: rotate(180deg); }
+    .msg-tool-body {
+      max-height: 0; overflow: hidden;
+      transition: max-height 0.3s ease;
+    }
+    .msg-tool.expanded .msg-tool-body { max-height: 300px; overflow-y: auto; }
+    .msg-tool-content {
+      padding: 8px 12px 12px;
+      border-top: 1px solid #1e2a3e;
+      font-family: 'Menlo', 'Consolas', monospace;
+      font-size: 11.5px; line-height: 1.55;
+      color: #a8bccf; white-space: pre-wrap; word-break: break-all;
+    }
+
+    .msg-tool-call .msg-tool-icon { color: #7ec699; }
+    .msg-tool-call .msg-tool-name { color: #7ec699; }
+    .msg-tool-result .msg-tool-icon { color: #e6c07b; }
+    .msg-tool-result .msg-tool-name { color: #e6c07b; }
+
+    /* 系统消息 / 完成标记 */
+    .msg-system {
+      color: #4a5a6e; font-size: 11.5px; text-align: center;
+      padding: 2px 0; font-style: normal;
+    }
+    .msg-done {
+      color: #58a6ff; font-size: 11.5px; text-align: center;
+      padding: 4px 0; border-top: 1px dashed #1e2a3e; margin-top: 4px;
+    }
+    .msg-error {
+      background: rgba(220, 53, 69, 0.12); color: #f56c6c;
+      border: 1px solid rgba(220, 53, 69, 0.2); border-radius: 10px;
+      padding: 8px 14px; font-size: 12px; max-width: 88%;
+    }
     #chat-input-area {
-      display: flex; border-top: 1px solid #2a2a4a;
-      padding: 10px; background: #0f1929; gap: 6px;
+      display: flex; border-top: 1px solid #1e2a3e;
+      padding: 14px 16px; background: #0a0e17; gap: 8px;
+      align-items: flex-end;
     }
     #chat-input {
-      flex: 1; background: #1a2744; border: 1px solid #334466;
-      color: #e0e0e0; padding: 8px 12px; font-family: inherit;
-      font-size: 13px; border-radius: 6px; outline: none; resize: none;
-      min-height: 38px; max-height: 120px;
+      flex: 1; background: #151c2c; border: 1px solid #243049;
+      color: #e0e0e0; padding: 12px 14px; font-family: inherit;
+      font-size: 13.5px; border-radius: 12px; outline: none; resize: none;
+      min-height: 48px; max-height: 160px;
+      transition: border-color 0.2s, box-shadow 0.2s;
     }
-    #chat-input:focus { border-color: #8bb4f9; }
+    #chat-input:focus { border-color: #4a7dcc; box-shadow: 0 0 0 3px rgba(74,125,204,0.15); }
+    #chat-input::placeholder { color: #3a4a5e; }
     #send-btn {
-      background: #8bb4f9; color: #1a1a2e; border: none;
-      padding: 8px 18px; font-family: inherit; font-size: 13px;
-      font-weight: bold; border-radius: 6px; cursor: pointer; white-space: nowrap;
+      background: linear-gradient(135deg, #1a56db, #1e40af); color: #fff; border: none;
+      padding: 12px 20px; font-family: inherit; font-size: 13.5px;
+      font-weight: 600; border-radius: 12px; cursor: pointer; white-space: nowrap;
+      transition: transform 0.15s, box-shadow 0.2s, opacity 0.2s;
     }
-    #send-btn:hover { background: #a0c4ff; }
-    #send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    #send-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(26,86,219,0.35); }
+    #send-btn:active { transform: translateY(0); }
+    #send-btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none; box-shadow: none; }
 
     /* 中间：文件目录 */
     #files-panel {
@@ -235,7 +331,7 @@
       <div id="chat-header">对话</div>
       <div id="chat-log"></div>
       <div id="chat-input-area">
-        <textarea id="chat-input" placeholder="描述你想要的设计，例如：帮我做一个登录页面..." rows="1"></textarea>
+        <textarea id="chat-input" placeholder="描述你想要的界面设计或功能需求，例如：帮我制作一个响应式的个人博客首页..." rows="1"></textarea>
         <button id="send-btn">发送</button>
       </div>
     </div>
@@ -329,11 +425,87 @@
     updateStatusDot();
 
     // ===== 聊天日志 =====
+    function createRow(side) {
+      const row = document.createElement('div');
+      row.className = `msg-row msg-row-${side}`;
+      chatLog.appendChild(row);
+      return row;
+    }
+    function addBubble(row, text, cls) {
+      const b = document.createElement('div');
+      b.className = `msg-bubble ${cls}`;
+      b.textContent = text;
+      row.appendChild(b);
+      chatLog.scrollTop = chatLog.scrollHeight;
+      return b;
+    }
+
     function log(text, cls) {
-      const s = document.createElement('span'); s.className = cls || '';
-      s.textContent = text; chatLog.appendChild(s); chatLog.scrollTop = chatLog.scrollHeight;
+      finalizeStream();
+      const side = (cls === 'msg-user') ? 'user' : 'ai';
+      const row = createRow(side);
+      addBubble(row, text, cls);
     }
     function logLine(t, c) { log(t + '\n', c); }
+
+    // ===== 流式输出 =====
+    let streamBubble = null;
+
+    function startStream() {
+      finalizeStream();
+      const row = createRow('ai');
+      streamBubble = document.createElement('div');
+      streamBubble.className = 'msg-bubble msg-assistant msg-streaming';
+      const cursor = document.createElement('span');
+      cursor.className = 'cursor';
+      streamBubble.appendChild(cursor);
+      row.appendChild(streamBubble);
+    }
+    function appendStream(text) {
+      if (!streamBubble) startStream();
+      const cursor = streamBubble.querySelector('.cursor');
+      const tn = document.createTextNode(text);
+      streamBubble.insertBefore(tn, cursor);
+      chatLog.scrollTop = chatLog.scrollHeight;
+    }
+    function finalizeStream() {
+      if (!streamBubble) return;
+      const cursor = streamBubble.querySelector('.cursor');
+      if (cursor) cursor.remove();
+      streamBubble.classList.remove('msg-streaming');
+      streamBubble = null;
+    }
+
+    // ===== 工具调用折叠卡片 =====
+    function addToolCard(type, name, content) {
+      finalizeStream();
+      const row = createRow('ai');
+      const card = document.createElement('div');
+      card.className = `msg-tool msg-tool-${type}`;
+
+      const summaryText = type === 'call'
+        ? `${name}(${content.slice(0, 80)}${content.length > 80 ? '...' : ''})`
+        : content.slice(0, 100) + (content.length > 100 ? '...(点击展开)' : '');
+      const icon = type === 'call' ? '⚡' : '✅';
+
+      card.innerHTML = `
+        <div class="msg-tool-header">
+          <span class="msg-tool-icon">${icon}</span>
+          <span class="msg-tool-name">${name}</span>
+          <span class="msg-tool-summary">${summaryText}</span>
+          <span class="msg-tool-toggle">▼</span>
+        </div>
+        <div class="msg-tool-body">
+          <div class="msg-tool-content"></div>
+        </div>`;
+
+      card.querySelector('.msg-tool-content').textContent = content;
+      card.querySelector('.msg-tool-header').addEventListener('click', () => {
+        card.classList.toggle('expanded');
+      });
+      row.appendChild(card);
+      chatLog.scrollTop = chatLog.scrollHeight;
+    }
 
     // ===== 文件列表 =====
     function renderFileList() {
@@ -361,6 +533,43 @@
       );
     }
 
+    const blobUrlCache = new Map();
+
+    function getBlobUrl(path) {
+      if (blobUrlCache.has(path)) return blobUrlCache.get(path);
+      const store = getFileStore();
+      const content = store.get(path);
+      if (content === undefined) return null;
+      const ext = path.split('.').pop().toLowerCase();
+      const mime = { css:'text/css', js:'application/javascript', json:'application/json', svg:'image/svg+xml', html:'text/html', htm:'text/html' }[ext] || 'text/plain';
+      const url = URL.createObjectURL(new Blob([content], { type: mime }));
+      blobUrlCache.set(path, url);
+      return url;
+    }
+
+    function invalidateBlobUrls() {
+      for (const url of blobUrlCache.values()) URL.revokeObjectURL(url);
+      blobUrlCache.clear();
+    }
+
+    function resolveWithBlobUrls(htmlContent, basePath) {
+      let resolved = htmlContent;
+      const dir = basePath.substring(0, basePath.lastIndexOf('/') + 1);
+      resolved = resolved.replace(/<link\s[^>]*rel=["']stylesheet["'][^>]*href=["']([^"']+)["'][^>]*>/gi, (match, href) => {
+        const fullPath = (href.startsWith('/') ? href.slice(1) : dir + href);
+        const url = getBlobUrl(fullPath);
+        if (url) return match.replace(href, url);
+        return match;
+      });
+      resolved = resolved.replace(/<script\s[^>]*src=["']([^"']+)["'][^>]*><\/script>/gi, (match, src) => {
+        const fullPath = (src.startsWith('/') ? src.slice(1) : dir + src);
+        const url = getBlobUrl(fullPath);
+        if (url) return match.replace(src, url);
+        return match;
+      });
+      return resolved;
+    }
+
     function selectFile(path) {
       activeFile = path;
       const store = getFileStore(), content = store.get(path);
@@ -372,7 +581,9 @@
       if (path.endsWith('.html') || path.endsWith('.htm')) {
         previewPlaceholder.style.display = 'none';
         previewFrame.style.display = 'block';
-        previewFrame.srcdoc = content;
+        invalidateBlobUrls();
+        const resolved = resolveWithBlobUrls(content, path);
+        previewFrame.srcdoc = resolved;
       } else {
         previewFrame.style.display = 'none';
         previewPlaceholder.style.display = 'flex';
@@ -385,7 +596,9 @@
     newTabBtn.addEventListener('click', () => {
       if (!activeFile) return;
       const c = getFileStore().get(activeFile); if (!c) return;
-      window.open(URL.createObjectURL(new Blob([c], { type: 'text/html' })), '_blank');
+      invalidateBlobUrls();
+      const resolved = resolveWithBlobUrls(c, activeFile);
+      window.open(URL.createObjectURL(new Blob([resolved], { type: 'text/html' })), '_blank');
     });
 
     // ===== API Key 弹窗 =====
@@ -407,7 +620,7 @@
     if (!hasApiKey()) {
       logLine('请先设置智谱 AI API Key（点击右上角 API Key 按钮）。\n', 'msg-system');
     } else {
-      logLine('就绪。描述你想要的设计，我会生成 HTML 并实时预览。\n', 'msg-system');
+      logLine('就绪。描述你想要的设计，我会生成模块化的 HTML/CSS/JS 代码并实时预览。\n', 'msg-system');
     }
 
     // ===== 发送消息 =====
@@ -423,27 +636,42 @@
 
       try {
         const msgs = await runAgent(input, {
-          onText(t) { logLine(t, 'msg-assistant'); },
-          onToolCall(n, i) { logLine(`⚡ ${n}(${JSON.stringify(i).slice(0,120)}${JSON.stringify(i).length>120?'...':''})\n`, 'msg-tool-call'); },
+          onText(t) { finalizeStream(); logLine(t, 'msg-system'); },
+          onStreamText(chunk) { appendStream(chunk); },
+          onToolCall(n, i) {
+            finalizeStream();
+            addToolCard('call', n, JSON.stringify(i, null, 2));
+          },
           onToolResult(n, r) {
-            const d = typeof r==='string' ? (r.length>300?r.slice(0,300)+'\n...(截断)':r) : JSON.stringify(r).slice(0,300);
-            logLine(`✅ ${n} → ${d}\n`, 'msg-tool-result');
+            finalizeStream();
+            const d = typeof r === 'string' ? r : JSON.stringify(r, null, 2);
+            addToolCard('result', n, d);
             renderFileList();
-            if (n === 'write_file' && !activeFile) {
+            if (n === 'write_file') {
               const m = r.match(/Written (.+?) \(/);
-              if (m) setTimeout(() => selectFile(m[1]), 100);
+              if (m) {
+                const writtenPath = m[1];
+                if (!activeFile) {
+                  if (writtenPath === 'index.html') setTimeout(() => selectFile(writtenPath), 100);
+                  else { const store = getFileStore(); if (store.has('index.html')) setTimeout(() => selectFile('index.html'), 150); else setTimeout(() => selectFile(writtenPath), 100); }
+                } else {
+                  setTimeout(() => selectFile(activeFile), 100);
+                }
+              }
             }
           },
           onDone(u) {
+            finalizeStream();
             const t = (u.input_tokens||0)+(u.output_tokens||0);
-            logLine(`📊 tokens: ${t}\n`, 'msg-done');
+            logLine(`📊 tokens: ${t}`, 'msg-done');
           },
-          onSnip(b, a) { logLine(`✂️ 裁剪上下文: ${b}→${a}\n`, 'msg-system'); },
+          onSnip(b, a) { finalizeStream(); logLine(`✂️ 裁剪上下文: ${b}→${a}`, 'msg-system'); },
         }, conversationMessages);
 
         conversationMessages = msgs;
-        logLine('\n--- 可以继续调整 ---\n', 'msg-system');
+        logLine('--- 可以继续调整 ---', 'msg-system');
       } catch (err) {
+        finalizeStream();
         logLine(`Error: ${err.message}\n`, 'msg-error');
         if (err.message.includes('API Key')) showKey();
       }
@@ -456,7 +684,7 @@
     chatInput.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } });
     chatInput.addEventListener('input', () => {
       chatInput.style.height = 'auto';
-      chatInput.style.height = Math.min(chatInput.scrollHeight, 120) + 'px';
+      chatInput.style.height = Math.min(chatInput.scrollHeight, 160) + 'px';
     });
 
     // 拖拽分隔条
