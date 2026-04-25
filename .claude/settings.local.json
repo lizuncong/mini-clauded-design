@@ -1,7 +1,10 @@
 {
   "permissions": {
     "allow": [
-      "WebFetch(domain:juejin.cn)"
+      "WebFetch(domain:juejin.cn)",
+      "WebFetch(domain:github.com)",
+      "Bash(npm install *)",
+      "Bash(uipro init *)"
     ]
   }
 }
