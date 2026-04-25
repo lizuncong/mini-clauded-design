@@ -1,0 +1,23 @@
+# Validate commit messages
+commit-msg:
+  commands:
+    commitlint:
+      run: npx --no -- commitlint --edit {1}
+
+# Validate content before committing
+pre-commit:
+  commands:
+    # 1. i18n 检查（
+    i18n-check:
+      glob: '*.{ts,tsx,json}' # 只检查相关文件变更时触发
+      run: pnpm run check:i18n || true
+      fail_text: ⚠️ i18n issues found (non-blocking)
+    lint:
+      glob: '*'
+      run: npx --no -- eslint --fix --no-warn-ignored {staged_files}
+      stage_fixed: true
+      priority: 1
+    check-types:
+      glob: '*.{ts,tsx}'
+      run: npm run check:types
+      priority: 2
