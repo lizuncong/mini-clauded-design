@@ -1,18 +1,4 @@
-# Next 16项目脚手架
+## Snake Design
 
-## vscode
-
-### 推荐插件清单
-通过`vscode/extensions.json`文件推荐开发需要安装的插件：
-
-- dbaeumer.vscode-eslint – ESLint 语法/风格检查
-- mikestead.dotenv – .env 语法高亮
-- bradlc.vscode-tailwindcss – Tailwind CSS 智能提示
-- yoavbls.pretty-ts-errors – 把 TypeScript 报错“翻译”成易读格式
-- lokalise.i18n-ally – i18n 多语言文件可视化
-
-## public目录
-静态资源存放的目录
-- css。
-- js
-- images
+## 参考资料
+- 向我在AI Agent开发路上的引路人[睿博](https://github.com/Dr-Corgi)致敬🫡，灵感来源于[睿博](https://github.com/Dr-Corgi/OpenPaw)的[OpenPaw](https://github.com/Dr-Corgi/OpenPaw)
