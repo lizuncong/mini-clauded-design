@@ -1,0 +1,128 @@
+'use client';
+
+import type { ChatMessage } from '../lib/types';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ChatBubble } from './ChatBubble';
+import { ToolCard } from './ToolCard';
+
+type ChatPanelProps = {
+  messages: ChatMessage[];
+  onSend: (message: string) => void;
+  isRunning: boolean;
+};
+
+export function ChatPanel({ messages, onSend, isRunning }: ChatPanelProps) {
+  const [input, setInput] = useState('');
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const scrollToBottom = useCallback(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, []);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, scrollToBottom]);
+
+  const handleSend = () => {
+    const trimmed = input.trim();
+    if (!trimmed || isRunning) {
+      return;
+    }
+    onSend(trimmed);
+    setInput('');
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
+  const handleTextareaInput = () => {
+    const el = textareaRef.current;
+    if (!el) {
+      return;
+    }
+    el.style.height = 'auto';
+    el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
+  };
+
+  return (
+    <section className="flex h-full min-w-[200px] flex-col border-r border-[#2a2a4a] bg-[#0f1219]">
+      <div className="flex items-center gap-2 border-b border-[#1e2a3e] bg-[#141b2d] px-4.5 py-3.5">
+        <span className="h-1.75 w-1.75 rounded-full bg-[#7ec699]" />
+        <span className="text-[13px] font-semibold text-[#8bb4f9]">对话</span>
+      </div>
+
+      <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-3 p-4">
+        {messages.length === 0 && (
+          <div className="flex items-center justify-center py-16 text-sm text-[#4a5a6e]">
+            描述你想要的界面设计或功能需求
+          </div>
+        )}
+        {messages.map(msg => (
+          <div key={msg.id}>
+            {(msg.type === 'user' || msg.type === 'assistant') && (
+              <ChatBubble message={msg} />
+            )}
+            {msg.type === 'tool-call' && (
+              <ToolCard
+                type="call"
+                name={msg.toolName || ''}
+                content={msg.toolArgs || ''}
+              />
+            )}
+            {msg.type === 'tool-result' && (
+              <ToolCard
+                type="result"
+                name={msg.toolName || ''}
+                content={msg.content}
+              />
+            )}
+            {msg.type === 'system' && (
+              <p className="text-center text-[11.5px] text-[#4a5a6e]">{msg.content}</p>
+            )}
+            {msg.type === 'done' && (
+              <p className="border-t border-dashed border-[#1e2a3e] pt-1 text-center text-[11.5px] text-[#58a6ff]">
+                {msg.content}
+              </p>
+            )}
+            {msg.type === 'error' && (
+              <div className="mx-auto max-w-[88%] rounded-xl border border-solid border-[rgba(220,53,69,0.2)] bg-[rgba(220,53,69,0.12)] px-3.5 py-2 text-xs text-[#f56c6c]">
+                {msg.content}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <div className="flex items-end gap-2 border-t border-[#1e2a3e] bg-[#0a0e17] p-3.5">
+        <textarea
+          ref={textareaRef}
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          onKeyDown={handleKeyDown}
+          onInput={handleTextareaInput}
+          placeholder="描述你想要的界面设计或功能需求，例如：帮我制作一个响应式的个人博客首页..."
+          disabled={isRunning}
+          rows={1}
+          className="min-h-[48px] max-h-[160px] flex-1 resize-none rounded-xl border border-[#243049] bg-[#151c2c] px-3.5 py-3 text-[13.5px] leading-relaxed text-[#e0e0e0] outline-none transition-all duration-200 placeholder:text-[#3a4a5e] focus:border-[#4a7dcc] focus:shadow-[0_0_0_3px_rgba(74,125,204,0.15)] disabled:opacity-50"
+        />
+        <button
+          onClick={handleSend}
+          disabled={isRunning || !input.trim()}
+          className="cursor-pointer whitespace-nowrap rounded-xl bg-gradient-to-br from-[#1a56db] to-[#1e40af] px-5 py-3 text-[13.5px] font-semibold text-white outline-none transition-all duration-150 hover:-translate-y-px hover:shadow-[0_4px_14px_rgba(26,86,219,0.35)] active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-35 disabled:shadow-none disabled:translate-y-0"
+        >
+          发送
+        </button>
+      </div>
+    </section>
+  );
+}
