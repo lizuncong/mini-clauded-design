@@ -42,7 +42,9 @@ If the file doesn't exist, returns an error message.`,
     },
     async execute({ path }) {
       const content = fileStore.get(path);
-      if (content === undefined) return `Error: file not found: ${path}`;
+      if (content === undefined) {
+        return `Error: file not found: ${path}`;
+      }
       return content;
     },
   },
@@ -56,7 +58,9 @@ If the file doesn't exist, returns an error message.`,
     },
     async execute() {
       const files = [...fileStore.keys()];
-      if (files.length === 0) return '(empty project)';
+      if (files.length === 0) {
+        return '(empty project)';
+      }
       return files.join('\n');
     },
   },

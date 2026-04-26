@@ -1,17 +1,19 @@
 // agent.js — Agent Loop 核心逻辑（智谱原生格式）
 // 直接使用 OpenAI function calling 格式，零转换
 
-import { registerTool } from './tools/index.js';
+import { callZhipuStream } from './llm.js';
 import fsTools from './tools/filesystem.js';
+import { registerTool } from './tools/index.js';
 import snipTool, {
-  tagUserMessage,
   executeSnips,
+  tagUserMessage,
   trimMessages,
 } from './tools/snip.js';
-import { callZhipuStream } from './llm.js';
 
 // 注册所有工具
-for (const tool of Object.values(fsTools)) registerTool(tool);
+for (const tool of Object.values(fsTools)) {
+  registerTool(tool);
+}
 registerTool(snipTool);
 
 const SYSTEM_PROMPT = `你是一名专家级设计师，以"创意总监"身份与用户协作。你将根据用户需求，产出高保真、专业级的前端设计产物。
@@ -147,9 +149,11 @@ function estimateTokens(messages, systemPrompt) {
       chars += msg.content.length;
     } else if (Array.isArray(msg.content)) {
       for (const block of msg.content) {
-        if (block.type === 'text') chars += block.text.length;
-        else if (block.type === 'tool_use') chars += JSON.stringify(block.input).length;
-        else if (block.type === 'tool_result') {
+        if (block.type === 'text') {
+          chars += block.text.length;
+        } else if (block.type === 'tool_use') {
+          chars += JSON.stringify(block.input).length;
+        } else if (block.type === 'tool_result') {
           chars += typeof block.content === 'string'
             ? block.content.length
             : JSON.stringify(block.content).length;
@@ -223,10 +227,14 @@ export async function runAgent(userInput, {
     const finishReason = choice.finish_reason;
 
     const assistantMsg = { role: 'assistant', content: msg.content || '' };
-    if (msg.tool_calls) assistantMsg.tool_calls = msg.tool_calls;
+    if (msg.tool_calls) {
+      assistantMsg.tool_calls = msg.tool_calls;
+    }
     messages.push(assistantMsg);
 
-    if (fullContent) onText('\n');
+    if (fullContent) {
+      onText('\n');
+    }
 
     if (finishReason !== 'tool_calls' || !msg.tool_calls || msg.tool_calls.length === 0) {
       onDone(usage);

@@ -51,19 +51,30 @@ Snips are a REGISTRATION system, not immediate deletion. Registering is cheap an
  * 执行所有已注册的 snip，返回被裁剪的消息 ID 集合
  */
 export function executeSnips(messages) {
-  if (registeredSnips.length === 0) return new Set();
+  if (registeredSnips.length === 0) {
+    return new Set();
+  }
 
   const idsToRemove = new Set();
   for (const snip of registeredSnips) {
     let removing = false;
     for (const msg of messages) {
-      if (msg.role !== 'user') continue;
+      if (msg.role !== 'user') {
+        continue;
+      }
       const id = extractMsgId(
-        typeof msg.content === 'string' ? msg.content : ''
+        typeof msg.content === 'string' ? msg.content : '',
       );
-      if (id === snip.from_id) removing = true;
-      if (removing) idsToRemove.add(id);
-      if (id === snip.to_id) { removing = false; break; }
+      if (id === snip.from_id) {
+        removing = true;
+      }
+      if (removing) {
+        idsToRemove.add(id);
+      }
+      if (id === snip.to_id) {
+        removing = false;
+        break;
+      }
     }
   }
   registeredSnips.length = 0; // 清空已执行的 snip
@@ -74,7 +85,9 @@ export function executeSnips(messages) {
  * 根据 ID 集合裁剪消息，用 <dropped_messages> 占位符替换
  */
 export function trimMessages(messages, idsToRemove) {
-  if (idsToRemove.size === 0) return messages;
+  if (idsToRemove.size === 0) {
+    return messages;
+  }
 
   let removedCount = 0;
   const result = [];
@@ -84,7 +97,7 @@ export function trimMessages(messages, idsToRemove) {
       continue;
     }
     const id = extractMsgId(
-      typeof msg.content === 'string' ? msg.content : ''
+      typeof msg.content === 'string' ? msg.content : '',
     );
     if (id && idsToRemove.has(id)) {
       removedCount++;

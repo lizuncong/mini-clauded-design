@@ -95,7 +95,9 @@ export async function callZhipuAPI(messages, tools, systemPrompt, options = {}) 
  */
 export async function callZhipuStream(messages, tools, systemPrompt, callbacks = {}, options = {}) {
   const apiKey = getApiKey();
-  if (!apiKey) throw new Error('未设置智谱 AI API Key，请先在页面顶部设置');
+  if (!apiKey) {
+    throw new Error('未设置智谱 AI API Key，请先在页面顶部设置');
+  }
 
   const body = {
     model: options.model || getModel(),
@@ -147,7 +149,9 @@ export async function callZhipuStream(messages, tools, systemPrompt, callbacks =
 
   while (true) {
     const { done, value } = await reader.read();
-    if (done) break;
+    if (done) {
+      break;
+    }
 
     buffer += decoder.decode(value, { stream: true });
     const lines = buffer.split('\n');
@@ -155,19 +159,27 @@ export async function callZhipuStream(messages, tools, systemPrompt, callbacks =
 
     for (const line of lines) {
       const trimmed = line.trim();
-      if (!trimmed || trimmed === 'data: [DONE]') continue;
-      if (!trimmed.startsWith('data: ')) continue;
+      if (!trimmed || trimmed === 'data: [DONE]') {
+        continue;
+      }
+      if (!trimmed.startsWith('data: ')) {
+        continue;
+      }
 
       try {
         const chunk = JSON.parse(trimmed.slice(6));
         const choice = chunk.choices?.[0];
-        if (!choice) continue;
+        if (!choice) {
+          continue;
+        }
 
         const delta = choice.delta || {};
 
         if (delta.content) {
           accumulated.content += delta.content;
-          if (callbacks.onTextChunk) callbacks.onTextChunk(delta.content);
+          if (callbacks.onTextChunk) {
+            callbacks.onTextChunk(delta.content);
+          }
         }
 
         if (delta.tool_calls) {
@@ -177,10 +189,18 @@ export async function callZhipuStream(messages, tools, systemPrompt, callbacks =
               accumulated.tool_calls[idx] = { id: '', type: 'function', function: { name: '', arguments: '' } };
               accumulated.current_tool_index = idx;
             }
-            if (tc.id) accumulated.tool_calls[idx].id = tc.id;
-            if (tc.type) accumulated.tool_calls[idx].type = tc.type;
-            if (tc.function?.name) accumulated.tool_calls[idx].function.name += tc.function.name;
-            if (tc.function?.arguments) accumulated.tool_calls[idx].function.arguments += tc.function.arguments;
+            if (tc.id) {
+              accumulated.tool_calls[idx].id = tc.id;
+            }
+            if (tc.type) {
+              accumulated.tool_calls[idx].type = tc.type;
+            }
+            if (tc.function?.name) {
+              accumulated.tool_calls[idx].function.name += tc.function.name;
+            }
+            if (tc.function?.arguments) {
+              accumulated.tool_calls[idx].function.arguments += tc.function.arguments;
+            }
           }
         }
 
@@ -196,7 +216,9 @@ export async function callZhipuStream(messages, tools, systemPrompt, callbacks =
     }
   }
 
-  if (callbacks.onDone) callbacks.onDone(accumulated);
+  if (callbacks.onDone) {
+    callbacks.onDone(accumulated);
+  }
 
   return {
     choices: [{

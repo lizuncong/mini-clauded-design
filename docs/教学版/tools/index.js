@@ -19,6 +19,8 @@ export function getToolDefinitions() {
 
 export async function dispatchTool(toolName, input, ctx) {
   const tool = toolRegistry.get(toolName);
-  if (!tool?.execute) return `Unknown tool: ${toolName}`;
+  if (!tool?.execute) {
+    return `Unknown tool: ${toolName}`;
+  }
   return await tool.execute(input, ctx);
 }
