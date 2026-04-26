@@ -13,21 +13,6 @@
 
 首次使用需在弹窗中输入智谱 AI API Key（前往 [open.bigmodel.cn](https://open.bigmodel.cn) 注册获取）。
 
-## 项目结构
-
-```
-mini-harness/
-├── index.html              # 入口页面（暗色终端 UI + API Key 弹窗）
-├── agent.js                # Agent Loop 核心逻辑
-├── llm.js                  # 智谱 AI (GLM) 真实 LLM 调用
-└── tools/
-    ├── index.js            # 工具注册表 + 调度器
-    ├── filesystem.js       # write_file / read_file / list_files
-    └── snip.js             # 上下文裁剪工具
-```
-
-6 个文件，零依赖，浏览器直接跑（需联网调用智谱 AI API）。
-
 ---
 
 ## 一、为什么 Agent 的智能在前端？
@@ -64,11 +49,11 @@ mini-harness/
 
 ---
 
-## 二、消息格式 — Claude API 的 tool_use 协议
+## 二、消息格式 — OpenAI Function Calling 协议
 
-在动手之前，得先搞清楚 Claude API 的消息格式。这是整个 harness 的基础。
+在动手之前，得先搞清楚 OpenAI 兼容 API 的消息格式。这是整个 harness 的基础。
 
-Claude 的 tool_use 协议大概是这样的：
+智谱 AI 提供 OpenAI 兼容接口，我们直接使用 OpenAI 的 function calling 协议：
 
 ```javascript
 // 1. 发给 API 的消息列表
@@ -79,42 +64,43 @@ const messages = [
   },
   {
     role: 'assistant',
-    content: [
-      { type: 'text', text: '好的，我来帮你创建。' },
+    content: '好的，我来帮你创建。',
+    tool_calls: [
       {
-        type: 'tool_use',
-        id: 'toolu_01ABC',
-        name: 'write_file',
-        input: { path: 'Button.html', content: '<button>Click</button>' }
+        id: 'call_01ABC',
+        type: 'function',
+        function: {
+          name: 'write_file',
+          arguments: '{"path":"Button.html","content":"<button>Click</button>"}'
+        }
       }
     ]
   },
   {
-    role: 'user',
-    content: [
-      {
-        type: 'tool_result',
-        tool_use_id: 'toolu_01ABC',
-        content: 'Written Button.html (24 chars)'
-      }
-    ]
+    role: 'tool',
+    tool_call_id: 'call_01ABC',
+    content: 'Written Button.html (24 chars)'
   }
 ];
 
 // 2. API 返回的响应
 const response = {
-  role: 'assistant',
-  content: [
-    { type: 'text', text: '文件已创建。' }
-  ],
-  stop_reason: 'end_turn'  // 或 'tool_use'
+  choices: [{
+    message: {
+      role: 'assistant',
+      content: '文件已创建。',
+      tool_calls: null
+    },
+    finish_reason: 'stop' // 或 'tool_calls'
+  }],
+  usage: { prompt_tokens: 100, completion_tokens: 50 }
 };
 ```
 
 关键点：
-- **assistant 消息可以同时包含 text 和 tool_use**。模型说"我来帮你创建"的同时调用工具
-- **tool_result 必须作为 user 消息发送**。这是 Claude API 的规定——assistant 和 user 必须交替出现
-- **stop_reason 决定循环走向**：`tool_use` → 继续循环，`end_turn` → 结束
+- **assistant 消息可以同时包含 content 和 tool_calls**。模型说"我来帮你创建"的同时调用工具
+- **tool 结果使用 role: 'tool' 发送**。必须包含 `tool_call_id` 来匹配对应的调用
+- **finish_reason 决定循环走向**：`tool_calls` → 继续循环，`stop` → 结束
 
 这个消息格式就是我们整个 agent loop 的骨架。
 
@@ -154,7 +140,9 @@ export function getToolDefinitions() {
 
 export async function dispatchTool(toolName, input, ctx) {
   const tool = toolRegistry.get(toolName);
-  if (!tool?.execute) return `Unknown tool: ${toolName}`;
+  if (!tool?.execute) {
+    return `Unknown tool: ${toolName}`;
+  }
   return await tool.execute(input, ctx);
 }
 ```
@@ -196,14 +184,14 @@ const fsTools = {
 对应 Claude Design 源码中的结构：
 
 ```typescript
-interface ToolDef {
+type ToolDef = {
   name: string;
   description: string;
-  input_schema: { type, properties, required };
+  input_schema: { type; properties; required };
   enabled?: () => boolean;
   execute?: (input, ctx) => string;
   executeMidstream?: (partialJson, ctx) => void;
-}
+};
 ```
 
 我们的 mini 版只保留 `name`、`description`、`input_schema`、`execute`，其他的先不实现。
@@ -213,11 +201,13 @@ interface ToolDef {
 在 agent.js 里统一注册：
 
 ```javascript
-import { registerTool } from './tools/index.js';
 import fsTools from './tools/filesystem.js';
+import { registerTool } from './tools/index.js';
 import snipTool from './tools/snip.js';
 
-for (const tool of Object.values(fsTools)) registerTool(tool);
+for (const tool of Object.values(fsTools)) {
+  registerTool(tool);
+}
 registerTool(snipTool);
 ```
 
@@ -227,119 +217,196 @@ Claude Design 在初始化时会注册十几个工具组（文件操作、视图
 
 ## 四、真实 LLM 调用 — 接入智谱 AI (GLM)
 
-我们使用智谱 AI 的 OpenAI 兼容接口来实现真实的 LLM 调用。API 端点：`https://open.bigmodel.cn/api/paas/v4/chat/completions`，默认模型 `glm-4-flash`。
+我们使用智谱 AI 的 OpenAI 兼容接口来实现真实的 LLM 调用。API 端点：`https://open.bigmodel.cn/api/paas/v4/chat/completions`。
 
-核心挑战在于：我们的 agent loop 使用的是 **Claude 格式**（tool_use / tool_result），而智谱 API 使用的是 **OpenAI 格式**（function calling / tool role）。需要一个格式转换层。
+由于智谱 AI 提供 OpenAI 兼容接口，我们可以直接使用 OpenAI 的 function calling 格式，无需任何格式转换。
 
-### 4.1 Claude → OpenAI 消息格式转换
+### 4.1 API Key 管理
+
+API Key 通过 `localStorage` 持久化：
 
 ```javascript
-// llm.js
-function convertMessages(messages) {
-  return messages.map(msg => {
-    if (msg.role === 'user' && Array.isArray(msg.content)) {
-      // tool_result 消息 → OpenAI 的 tool role
-      const toolResults = msg.content.filter(b => b.type === 'tool_result');
-      if (toolResults.length > 0) {
-        return toolResults.map(r => ({
-          role: 'tool',
-          tool_call_id: r.tool_use_id,
-          content: typeof r.content === 'string' ? r.content : JSON.stringify(r.content),
-        }));
-      }
-    }
-
-    if (msg.role === 'assistant' && Array.isArray(msg.content)) {
-      const textBlocks = msg.content.filter(b => b.type === 'text');
-      const toolUses = msg.content.filter(b => b.type === 'tool_use');
-      const result = { role: 'assistant' };
-      if (textBlocks.length > 0) result.content = textBlocks.map(b => b.text).join('\n');
-      if (toolUses.length > 0) {
-        result.tool_calls = toolUses.map(t => ({
-          id: t.id,
-          type: 'function',
-          function: { name: t.name, arguments: JSON.stringify(t.input) },
-        }));
-      }
-      return result;
-    }
-
-    return { role: msg.role, content: msg.content };
-  }).flat();
+export function getApiKey() {
+  return localStorage.getItem('zhipu_api_key') || '';
+}
+export function setApiKey(key) {
+  localStorage.setItem('zhipu_api_key', key);
+}
+export function hasApiKey() {
+  return !!getApiKey();
 }
 ```
 
-关键映射关系：
-
-| Claude 格式 | OpenAI 格式 | 说明 |
-|------------|------------|------|
-| `tool_use` block | `tool_calls` array | assistant 消息中的工具调用 |
-| `tool_use.id` | `tool_call.id` | 调用 ID，用于匹配结果 |
-| `tool_use.name` + `tool_use.input` | `function.name` + `function.arguments` | 工具名和参数 |
-| `tool_result` (user 消息) | `tool` role 消息 | 工具执行结果 |
-
-### 4.2 OpenAI → Claude 响应格式转换
+### 4.2 非流式调用
 
 ```javascript
-function convertResponse(apiResponse) {
-  const choice = apiResponse.choices[0];
-  const message = choice.message;
-  const content = [];
-
-  if (message.content) {
-    content.push({ type: 'text', text: message.content });
+export async function callZhipuAPI(messages, tools, systemPrompt, options = {}) {
+  const apiKey = getApiKey();
+  if (!apiKey) {
+    throw new Error('未设置智谱 AI API Key，请先在页面顶部设置');
   }
 
-  if (message.tool_calls) {
-    for (const tc of message.tool_calls) {
-      content.push({
-        type: 'tool_use',
-        id: tc.id,
-        name: tc.function.name,
-        input: JSON.parse(tc.function.arguments),
-      });
+  const body = {
+    model: 'glm-4-flash',
+    messages: [
+      { role: 'system', content: systemPrompt },
+      ...messages,
+    ],
+    max_tokens: options.maxTokens || 64000,
+    temperature: options.temperature ?? 0.7,
+  };
+
+  if (tools && tools.length > 0) {
+    body.tools = tools;
+    body.tool_choice = 'auto';
+  }
+
+  const resp = await fetch('https://open.bigmodel.cn/api/paas/v4/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!resp.ok) {
+    const errorBody = await resp.text();
+    let errorMsg = `API 请求失败 (${resp.status})`;
+    try {
+      const errJson = JSON.parse(errorBody);
+      errorMsg = errJson.error?.message || errJson.message || errorMsg;
+    } catch {}
+    throw new Error(errorMsg);
+  }
+
+  return await resp.json();
+}
+```
+
+### 4.3 流式调用（SSE）
+
+流式输出让用户能实时看到模型的回复，体验更流畅：
+
+```javascript
+export async function callZhipuStream(messages, tools, systemPrompt, callbacks = {}, options = {}) {
+  const apiKey = getApiKey();
+  if (!apiKey) {
+    throw new Error('未设置智谱 AI API Key，请先在页面顶部设置');
+  }
+
+  const body = {
+    model: 'glm-4-flash',
+    messages: [
+      { role: 'system', content: systemPrompt },
+      ...messages,
+    ],
+    max_tokens: options.maxTokens || 64000,
+    temperature: options.temperature ?? 0.7,
+    stream: true,
+    stream_options: { include_usage: true },
+  };
+
+  if (tools && tools.length > 0) {
+    body.tools = tools;
+    body.tool_choice = 'auto';
+  }
+
+  const resp = await fetch('https://open.bigmodel.cn/api/paas/v4/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify(body),
+  });
+
+  const reader = resp.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  const accumulated = {
+    content: '',
+    tool_calls: [],
+    usage: { prompt_tokens: 0, completion_tokens: 0 },
+    finish_reason: null,
+  };
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) {
+      break;
+    }
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() || '';
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed === 'data: [DONE]' || !trimmed.startsWith('data: ')) {
+        continue;
+      }
+
+      try {
+        const chunk = JSON.parse(trimmed.slice(6));
+        const delta = chunk.choices?.[0]?.delta || {};
+
+        // 文本增量
+        if (delta.content) {
+          accumulated.content += delta.content;
+          if (callbacks.onTextChunk) {
+            callbacks.onTextChunk(delta.content);
+          }
+        }
+
+        // 工具调用增量
+        if (delta.tool_calls) {
+          for (const tc of delta.tool_calls) {
+            const idx = tc.index ?? 0;
+            if (!accumulated.tool_calls[idx]) {
+              accumulated.tool_calls[idx] = { id: '', type: 'function', function: { name: '', arguments: '' } };
+            }
+            if (tc.id) {
+              accumulated.tool_calls[idx].id = tc.id;
+            }
+            if (tc.function?.name) {
+              accumulated.tool_calls[idx].function.name += tc.function.name;
+            }
+            if (tc.function?.arguments) {
+              accumulated.tool_calls[idx].function.arguments += tc.function.arguments;
+            }
+          }
+        }
+
+        if (chunk.choices?.[0]?.finish_reason) {
+          accumulated.finish_reason = chunk.choices[0].finish_reason;
+        }
+        if (chunk.usage) {
+          accumulated.usage = chunk.usage;
+        }
+      } catch {}
     }
   }
 
   return {
-    content,
-    stop_reason: message.tool_calls ? 'tool_use' : 'end_turn',
-    usage: {
-      input_tokens: apiResponse.usage.prompt_tokens,
-      output_tokens: apiResponse.usage.completion_tokens,
-    },
+    choices: [{
+      message: {
+        role: 'assistant',
+        content: accumulated.content || null,
+        tool_calls: accumulated.tool_calls.filter(tc => tc.id),
+      },
+      finish_reason: accumulated.finish_reason || 'stop',
+    }],
+    usage: accumulated.usage,
   };
 }
 ```
 
-### 4.3 工具定义转换
-
-Claude 的 `input_schema` 和 OpenAI 的 `parameters` 格式一致（都是 JSON Schema），只需包一层：
-
-```javascript
-function toOpenAIFunction(tool) {
-  return {
-    type: 'function',
-    function: {
-      name: tool.name,
-      description: tool.description,
-      parameters: tool.input_schema,  // JSON Schema 直接复用
-    },
-  };
-}
-```
-
-### 4.4 API Key 管理
-
-API Key 通过 `localStorage` 持久化，首次使用时弹窗输入：
-
-```javascript
-export function getApiKey() { return localStorage.getItem('zhipu_api_key') || ''; }
-export function setApiKey(key) { localStorage.setItem('zhipu_api_key', key); }
-export function hasApiKey() { return !!getApiKey(); }
-```
-
-通过这个转换层，agent loop 的代码完全不需要修改——它看到的始终是 Claude 格式的消息和响应。
+流式调用的关键点：
+- **增量累积**：`delta.content` 和 `delta.tool_calls` 都是增量，需要累积
+- **tool_calls 的 index**：多个工具调用通过 `index` 区分，需要按索引累积
+- **回调通知**：每收到一个文本 chunk 就调用 `onTextChunk`，实现实时渲染
 
 ---
 
@@ -353,10 +420,10 @@ export function hasApiKey() { return !!getApiKey(); }
 ┌──────────────────────────────────────┐
 │  while (turnCount < MAX_TURNS) {     │
 │    1. 组装消息 + token 预算检查       │
-│    2. 调用 LLM                       │
-│    3. 检查 stop_reason                │
-│    4. 有 tool_use → 执行 → 追加结果  │
-│    5. end_turn → 返回                │
+│    2. 调用 LLM（流式）               │
+│    3. 检查 finish_reason             │
+│    4. 有 tool_calls → 执行 → 追加结果│
+│    5. stop → 返回                    │
 │  }                                   │
 └──────────────────────────────────────┘
 ```
@@ -365,10 +432,28 @@ export function hasApiKey() { return !!getApiKey(); }
 
 ```javascript
 // agent.js
-export async function runAgent(userInput, { onText, onToolCall, onToolResult, onDone, onSnip }) {
-  const messages = [];
-  const { getToolDefinitions, dispatchTool } = await import('./tools/index.js');
-  let tools = getToolDefinitions();
+export async function runAgent(userInput, {
+  onText,
+  onStreamText,
+  onToolCall,
+  onToolResult,
+  onDone,
+  onSnip
+} = {}, existingMessages = []) {
+  const messages = existingMessages.length > 0 ? [...existingMessages] : [];
+  const { getToolDefinitions } = await import('./tools/index.js');
+  const rawTools = getToolDefinitions();
+
+  // 转换为 OpenAI 工具格式
+  const tools = rawTools.map(t => ({
+    type: 'function',
+    function: {
+      name: t.name,
+      description: t.description,
+      parameters: t.input_schema,
+    },
+  }));
+
   let turnCount = 0;
   const MAX_TURNS = 10;
 
@@ -376,8 +461,10 @@ export async function runAgent(userInput, { onText, onToolCall, onToolResult, on
     turnCount++;
 
     // 1. 追加 user 消息（带 [id:mNNNN] 标签）
-    const taggedContent = tagUserMessage(userInput);
-    messages.push({ role: 'user', content: taggedContent });
+    if (userInput) {
+      const taggedContent = tagUserMessage(userInput);
+      messages.push({ role: 'user', content: taggedContent });
+    }
 
     // 2. Token 预算检查
     const estimated = estimateTokens(messages, SYSTEM_PROMPT);
@@ -392,71 +479,93 @@ export async function runAgent(userInput, { onText, onToolCall, onToolResult, on
       }
     }
 
-    // 3. 调用 LLM
-    const response = await callLLM(messages, tools, SYSTEM_PROMPT);
+    onText(`\n[Turn ${turnCount}] `);
+
+    // 3. 流式调用 LLM
+    let fullContent = '';
+    const apiResp = await callZhipuStream(messages, tools, SYSTEM_PROMPT, {
+      onTextChunk(chunk) {
+        fullContent += chunk;
+        onStreamText(chunk);
+      },
+    });
+
+    const choice = apiResp.choices[0];
+    const msg = choice.message;
+    const usage = apiResp.usage || { prompt_tokens: 0, completion_tokens: 0 };
+    const finishReason = choice.finish_reason;
 
     // 4. 追加 assistant 消息
-    messages.push({ role: 'assistant', content: response.content });
+    const assistantMsg = { role: 'assistant', content: msg.content || '' };
+    if (msg.tool_calls) {
+      assistantMsg.tool_calls = msg.tool_calls;
+    }
+    messages.push(assistantMsg);
 
-    // 5. 提取文本和工具调用
-    const toolUses = response.content.filter(b => b.type === 'tool_use');
-    for (const block of response.content.filter(b => b.type === 'text')) {
-      onText(block.text);
+    if (fullContent) {
+      onText('\n');
     }
 
-    // 6. 根据 stop_reason 决定下一步
-    if (response.stop_reason === 'end_turn') {
-      onDone(response.usage);
+    // 5. 根据 finish_reason 决定下一步
+    if (finishReason !== 'tool_calls' || !msg.tool_calls || msg.tool_calls.length === 0) {
+      onDone(usage);
       return messages;
     }
 
-    if (response.stop_reason !== 'tool_use' || toolUses.length === 0) {
-      onDone(response.usage);
-      return messages;
-    }
+    // 6. 执行工具，追加 tool 结果
+    for (const tc of msg.tool_calls) {
+      const fn = tc.function;
+      const input = typeof fn.arguments === 'string' ? JSON.parse(fn.arguments) : fn.arguments;
+      onToolCall(fn.name, input);
 
-    // 7. 执行工具，收集 tool_result
-    const toolResults = [];
-    for (const toolUse of toolUses) {
-      onToolCall(toolUse.name, toolUse.input);
+      const { dispatchTool } = await import('./tools/index.js');
       try {
-        const result = await dispatchTool(toolUse.name, toolUse.input, {});
-        toolResults.push({
-          type: 'tool_result',
-          tool_use_id: toolUse.id,
-          content: result,
+        const result = await dispatchTool(fn.name, input, {});
+        onToolResult(fn.name, result);
+        messages.push({
+          role: 'tool',
+          tool_call_id: tc.id,
+          content: typeof result === 'string' ? result : JSON.stringify(result),
         });
-        onToolResult(toolUse.name, result);
       } catch (err) {
-        toolResults.push({
-          type: 'tool_result',
-          tool_use_id: toolUse.id,
-          content: `Error: ${err.message}`,
-          is_error: true,
+        const errContent = `Error: ${err.message}`;
+        onToolResult(fn.name, errContent);
+        messages.push({
+          role: 'tool',
+          tool_call_id: tc.id,
+          content: errContent,
         });
       }
     }
 
-    // 8. 追加 tool_result（作为 user 消息）
-    messages.push({ role: 'user', content: toolResults });
-
-    // 9. 后续轮次不再追加新 user 消息
+    // 7. 后续轮次不再追加新 user 消息
     userInput = '';
   }
+
+  onText('\n[Agent] 达到最大轮次限制\n');
+  return messages;
 }
 ```
 
-### 5.2 和 Claude Design 源码的对应关系
+### 5.2 关键改进
+
+相比之前的版本，教学版做了以下改进：
+
+1. **流式输出**：使用 `callZhipuStream` 实现实时文本渲染
+2. **OpenAI 原生格式**：无需格式转换，直接使用 `tool_calls` 和 `tool` role
+3. **对话持久化**：支持传入 `existingMessages`，实现多轮对话
+
+### 5.3 和 Claude Design 源码的对应关系
 
 | 我们的代码 | Claude Design 源码 | 说明 |
 |-----------|-------------------|------|
 | `while (turnCount < MAX_TURNS)` | `for(;;)` + turn break | 主循环 |
-| `callLLM()` / `callZhipuAPI()` | `dQ()` | 流式 LLM 调用 |
+| `callZhipuStream()` | `dQ()` | 流式 LLM 调用 |
 | `dispatchTool()` | `Rx()` | 工具调度器 |
 | `estimateTokens()` | `fj()` | Token 估算 |
 | `executeSnips()` | `vj()` | Snip 批量执行 |
 | `tagUserMessage()` | 消息 ID 系统 | `[id:mNNNN]` 标签 |
-| `stop_reason` 分支 | `_te()` 内的条件判断 | end_turn / tool_use |
+| `finish_reason` 分支 | `_te()` 内的条件判断 | tool_calls / stop |
 
 Claude Design 的 `_te()` 还有很多我们没有实现的逻辑：AbortController 中断处理、follow-up 消息注入、prompt caching、消息清洗管线...但这些不影响理解核心骨架。
 
@@ -557,7 +666,7 @@ token 超阈值？
 
 ## 七、跑起来
 
-所有代码都在 `mini-harness/` 目录下。因为使用了 ES Module（`<script type="module">`），需要一个本地服务器来运行。
+所有代码都在 `docs/教学版/` 目录下。因为使用了 ES Module（`<script type="module">`），需要一个本地服务器来运行。
 
 ### 7.1 前置条件
 
@@ -567,7 +676,7 @@ token 超阈值？
 ### 7.2 启动
 
 ```bash
-cd mini-harness
+cd docs/教学版
 npx serve .
 # 或
 python -m http.server 3000
@@ -577,35 +686,35 @@ python -m http.server 3000
 
 ### 7.3 运行效果
 
-输入"帮我创建一个按钮组件"后，终端会显示：
+输入"帮我创建一个按钮组件"后，会看到：
 
 ```
 > 帮我创建一个按钮组件
 
-[Turn 1] 正在思考...
+[Turn 1]
 好的，我来帮你创建这个文件。
   ⚡ write_file({"path":"components/Button.html","content":"<button style=\"padding"...})
   ✅ write_file → Written components/Button.html (86 chars)
 
-[Turn 2] 正在思考...
+[Turn 2]
 让我确认一下文件内容是否正确。
   ⚡ read_file({"path":"components/Button.html"})
   ✅ read_file → <button style="padding: 8px 16px; ...
 
-[Turn 3] 正在思考...
+[Turn 3]
 文件内容确认无误，已经创建好了。
 
-  📊 tokens: xxx (xxx in + xxx out)
+  📊 tokens: xxx
 
---- Agent 完成 ---
+--- 可以继续调整 ---
 ```
 
-三次 LLM 调用，两次工具执行，一轮完整的 tool-use 循环。与 mock 版本不同的是，模型的回复内容由大模型实时生成，不再是预设文本。
+三次 LLM 调用，两次工具执行，一轮完整的 tool-use 循环。**流式输出**让你能实时看到模型的回复，体验更流畅。
 
 ### 7.4 换一个试试
 
 输入任何自然语言描述，大模型会理解你的意图并调用合适的工具。比如：
-- "帮我创建一个登录页面" → 写入完整 HTML
+- "帮我创建一个登录页面" → 写入完整 HTML + CSS + JS
 - "把按钮改成红色" → 读取现有文件后修改
 - "列出所有文件" → 调用 list_files
 
@@ -619,9 +728,9 @@ python -m http.server 3000
 |------|-------------------|------------|
 | Agent Loop | 400 行，含中断/重试/follow-up | 90 行，基础循环 |
 | 工具系统 | 20+ 工具组，MCP/CC Bridge | 4 个基础工具 |
-| 流式渲染 | SSE + 逐字输出 + UI 更新 | 非流式，等待完整响应 |
+| 流式渲染 | SSE + 逐字输出 + UI 更新 | ✅ 已实现流式输出 |
 | 上下文管理 | 三层防线（cache/snip/sanitize） | 只有 snip |
-| System Prompt | 静态+动态，2000+ 行 | 一句话 |
+| System Prompt | 静态+动态，2000+ 行 | 完整设计规范 |
 | Skill 系统 | 按需加载 `<skill-md>` | 未实现 |
 | 消息清洗 | 4 步管线（aq→lq→dq→gq） | 未实现 |
 | Prompt Caching | `cache_control: ephemeral` | 未实现 |
@@ -637,10 +746,10 @@ python -m http.server 3000
 完整代码在本文的配套仓库中：
 
 ```
-mini-harness/
+docs/教学版/
 ├── index.html          ← 浏览器打开，首次需输入 API Key
-├── agent.js            ← Agent Loop（90 行）
-├── llm.js              ← 智谱 AI 调用 + 格式转换层
+├── agent.js            ← Agent Loop（流式输出）
+├── llm.js              ← 智谱 AI 流式调用
 └── tools/
     ├── index.js        ← 注册表 + 调度器
     ├── filesystem.js   ← 文件系统工具
