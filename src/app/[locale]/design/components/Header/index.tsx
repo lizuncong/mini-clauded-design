@@ -1,10 +1,10 @@
 'use client';
 
-import type { ModelOption } from '../lib/types';
-import { getModel, MODEL_LIST, setModel } from '../lib/llm';
+import type { ModelOption } from '../../lib/types';
+import { getModel, MODEL_LIST, setModel } from '../../lib/llm';
 import { ApiKeyModal } from './ApiKeyModal';
 
-export function TopBar() {
+export function Header() {
   return (
     <header className="flex h-12 items-center justify-between border-b border-[#2a2a4a] bg-[#0f1929] px-4">
       <div className="flex items-center gap-3">

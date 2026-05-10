@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { getApiKey, hasApiKey, setApiKey } from '../lib/llm';
+import { getApiKey, hasApiKey, setApiKey } from '../../lib/llm';
 
 export function ApiKeyModal() {
   const isConnected = hasApiKey();

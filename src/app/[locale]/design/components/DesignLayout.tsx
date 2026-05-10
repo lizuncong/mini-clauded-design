@@ -5,9 +5,9 @@ import { useCallback, useRef, useState } from 'react';
 import { runAgent } from '../lib/agent';
 import { ChatPanel } from './ChatPanel';
 import { FilePanel } from './FilePanel';
+import { Header } from './Header';
 import { PreviewPanel } from './PreviewPanel';
 import { ResizeHandle } from './ResizeHandle';
-import { TopBar } from './TopBar';
 
 let msgIdCounter = 0;
 
@@ -163,7 +163,7 @@ export function DesignLayout() {
 
   return (
     <div className="design-scrollbar flex h-screen flex-col overflow-hidden bg-[#1a1a2e] font-mono text-[#e0e0e0]">
-      <TopBar />
+      <Header />
 
       <div className="flex flex-1 overflow-hidden">
         <div style={{ width: chatWidth, minWidth: 200 }} className="shrink-0 overflow-hidden">
