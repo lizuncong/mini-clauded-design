@@ -1,5 +1,6 @@
 import { HeroSection } from './components/HeroSection';
 import { HomeHeader } from './components/HomeHeader';
+import { ModelsFooter } from './components/ModelsFooter';
 import { ProjectList } from './components/ProjectList';
 
 export default async function Home() {
@@ -11,6 +12,7 @@ export default async function Home() {
         <div className="border-t border-[#2a2a4a]" />
         <ProjectList />
       </main>
+      <ModelsFooter />
     </div>
   );
 }
