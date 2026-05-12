@@ -137,6 +137,11 @@ export function DesignLayout() {
               content: `完成 (输入: ${usage.prompt_tokens} tokens, 输出: ${usage.completion_tokens} tokens)`,
               timestamp: Date.now(),
             });
+            const files = fileStore.getAllFiles();
+            const indexHtml = files.find(f => f.path === 'index.html');
+            if (indexHtml) {
+              setActiveFile('index.html');
+            }
           },
           onSnip(before: number, after: number) {
             addMessage({
