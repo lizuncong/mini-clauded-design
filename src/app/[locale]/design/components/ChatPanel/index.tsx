@@ -1,9 +1,9 @@
 'use client';
 
-import type { ChatMessage } from '../lib/types';
+import type { ChatMessage } from '../../lib/types';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ChatBubble } from './ChatBubble';
-import { ToolCard } from './ToolCard';
+import { ChatBubble } from '../ChatBubble';
+import { ToolCard } from '../ToolCard';
 
 type ChatPanelProps = {
   messages: ChatMessage[];
