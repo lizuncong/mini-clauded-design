@@ -72,6 +72,7 @@ function resolveWithBlobUrls(htmlContent: string, basePath: string): string {
 
 export function PreviewPanel({ activeFile }: PreviewPanelProps) {
   const [refreshKey, setRefreshKey] = useState(0);
+  const [deviceMode, setDeviceMode] = useState<'desktop' | 'mobile'>('desktop');
   const frameRef = useRef<HTMLIFrameElement>(null);
 
   useEffect(() => {
@@ -127,7 +128,38 @@ export function PreviewPanel({ activeFile }: PreviewPanelProps) {
           <span className="h-1.75 w-1.75 rounded-full bg-[#7ec699]" />
           <span className="text-[13px] font-semibold text-[#7ec699]">预览</span>
         </div>
-        <div className="flex gap-1.5">
+        <div className="flex items-center gap-1.5">
+          <div className="flex rounded border border-solid border-[#334466] bg-[#1a2744] p-[2px]">
+            <button
+              onClick={() => setDeviceMode('desktop')}
+              className={`cursor-pointer rounded px-2 py-1 text-[11px] transition-colors duration-150 outline-none ${
+                deviceMode === 'desktop'
+                  ? 'bg-[#243355] text-[#8bb4f9]'
+                  : 'text-[#666] hover:text-[#8bb4f9]'
+              }`}
+              title="PC端预览"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+                <line x1="8" y1="21" x2="16" y2="21" />
+                <line x1="12" y1="17" x2="12" y2="21" />
+              </svg>
+            </button>
+            <button
+              onClick={() => setDeviceMode('mobile')}
+              className={`cursor-pointer rounded px-2 py-1 text-[11px] transition-colors duration-150 outline-none ${
+                deviceMode === 'mobile'
+                  ? 'bg-[#243355] text-[#8bb4f9]'
+                  : 'text-[#666] hover:text-[#8bb4f9]'
+              }`}
+              title="移动端预览"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
+                <line x1="12" y1="18" x2="12.01" y2="18" />
+              </svg>
+            </button>
+          </div>
           <button
             onClick={handleRefresh}
             disabled={!activeFile}
@@ -145,15 +177,15 @@ export function PreviewPanel({ activeFile }: PreviewPanelProps) {
         </div>
       </div>
 
-      <div className="relative flex-1 bg-white">
+      <div className={`relative flex-1 bg-white ${deviceMode === 'mobile' ? 'flex items-center justify-center overflow-auto' : ''}`}>
         {activeFile && file
           ? (
               <iframe
                 ref={frameRef}
-                key={`${activeFile}-${refreshKey}`}
+                key={`${activeFile}-${refreshKey}-${deviceMode}`}
                 srcDoc={getPreviewContent()}
                 sandbox="allow-scripts allow-same-origin allow-forms"
-                className="h-full w-full border-none"
+                className={`h-full border-none ${deviceMode === 'mobile' ? 'h-[calc(100%-2rem)] max-h-[812px] w-[375px] rounded-xl shadow-2xl ring-1 ring-black/10' : 'w-full'}`}
                 title={`Preview: ${activeFile}`}
               />
             )
