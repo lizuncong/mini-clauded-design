@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { downloadAsZip } from '../lib/download';
 import { fileStore } from '../lib/tools';
 
 type PreviewPanelProps = {
@@ -106,6 +107,14 @@ export function PreviewPanel({ activeFile }: PreviewPanelProps) {
     window.open(url, '_blank');
   }, [file, activeFile, isHtmlFile]);
 
+  const handleDownload = useCallback(async () => {
+    const files = fileStore.getAllFiles();
+    if (files.length === 0) {
+      return;
+    }
+    await downloadAsZip(files, 'design-project');
+  }, []);
+
   const getPreviewContent = (): string => {
     if (!file?.content) {
       return '';
@@ -173,6 +182,17 @@ export function PreviewPanel({ activeFile }: PreviewPanelProps) {
             className="cursor-pointer rounded border border-solid border-[#334466] bg-[#1a2744] px-2.5 py-1 text-[11px] text-[#8bb4f9] transition-colors duration-150 outline-none hover:bg-[#243355] disabled:cursor-not-allowed disabled:opacity-40"
           >
             新窗口
+          </button>
+          <button
+            onClick={handleDownload}
+            className="cursor-pointer rounded border border-solid border-[#334466] bg-[#1a2744] px-2.5 py-1 text-[11px] text-[#8bb4f9] transition-colors duration-150 outline-none hover:bg-[#243355]"
+            title="下载代码"
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
           </button>
         </div>
       </div>
