@@ -1,26 +1,173 @@
 'use client';
 
-import type { ChatMessage } from '../../lib/types';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import type { Dispatch, SetStateAction } from 'react';
+import type { ChatMessage, LlmMessage } from '../../lib/types';
+import { useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { runAgent } from '../../lib/agent';
+import { fileStore } from '../../lib/file-store';
 import { ChatBubble } from './ChatBubble';
 import { ToolCard } from './ToolCard';
 
-type ChatPanelProps = {
-  messages: ChatMessage[];
-  onSend: (message: string) => void;
-  isRunning: boolean;
+let msgIdCounter = 0;
+
+function generateId(): string {
+  return `msg-${Date.now()}-${String(++msgIdCounter).padStart(4, '0')}`;
+}
+export type ChatPanelHandle = {
+  onSend: (input: string) => Promise<void>;
 };
 
-export function ChatPanel({ messages, onSend, isRunning }: ChatPanelProps) {
+type ChatPanelProps = {
+  messages: ChatMessage[];
+  setMessages: Dispatch<SetStateAction<ChatMessage[]>>;
+  setActiveFile: Dispatch<SetStateAction<string | null>>;
+};
+
+export const ChatPanel = function ChatPanel(
+  { ref, messages, setMessages, setActiveFile }: ChatPanelProps & { ref?: React.RefObject<ChatPanelHandle | null> },
+) {
   const [input, setInput] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [isRunning, setIsRunning] = useState(false);
+  const conversationRef = useRef<LlmMessage[]>([]);
 
   const scrollToBottom = useCallback(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, []);
+
+  const addMessage = useCallback((msg: ChatMessage) => {
+    setMessages(prev => [...prev, msg]);
+  }, [setMessages]);
+
+  const updateLastStreaming = useCallback((content: string) => {
+    setMessages((prev) => {
+      const updated = [...prev];
+      for (let i = updated.length - 1; i >= 0; i--) {
+        const item = updated[i];
+        if (item?.type === 'assistant' && item?.isStreaming) {
+          updated[i] = {
+            id: item.id,
+            type: item.type,
+            content: item.content + content,
+            isStreaming: true,
+            timestamp: item.timestamp,
+          };
+          break;
+        }
+      }
+      return updated;
+    });
+  }, [setMessages]);
+
+  const finalizeStream = useCallback(() => {
+    setMessages(prev =>
+      prev.map(m => (m.isStreaming ? { ...m, isStreaming: false } : m)),
+    );
+  }, [setMessages]);
+  const onSend = useCallback(
+    async (input: string) => {
+      if (isRunning) {
+        return;
+      }
+      setIsRunning(true);
+
+      addMessage({
+        id: generateId(),
+        type: 'user',
+        content: input,
+        timestamp: Date.now(),
+      });
+
+      let currentStreamId = '';
+
+      try {
+        conversationRef.current = await runAgent(input, {
+          onText(text: string) {
+            addMessage({
+              id: generateId(),
+              type: 'system',
+              content: text,
+              timestamp: Date.now(),
+            });
+          },
+          onStreamText(chunk: string) {
+            if (!currentStreamId) {
+              currentStreamId = generateId();
+              addMessage({
+                id: currentStreamId,
+                type: 'assistant',
+                content: '',
+                isStreaming: true,
+                timestamp: Date.now(),
+              });
+            }
+            updateLastStreaming(chunk);
+          },
+          onToolCall(name: string, inputArgs: Record<string, unknown>) {
+            finalizeStream();
+            currentStreamId = '';
+            addMessage({
+              id: generateId(),
+              type: 'tool-call',
+              content: '',
+              toolName: name,
+              toolArgs: JSON.stringify(inputArgs),
+              timestamp: Date.now(),
+            });
+          },
+          onToolResult(name: string, result: string) {
+            addMessage({
+              id: generateId(),
+              type: 'tool-result',
+              content: result,
+              toolName: name,
+              timestamp: Date.now(),
+            });
+          },
+          onDone(usage: { prompt_tokens: number; completion_tokens: number }) {
+            finalizeStream();
+            currentStreamId = '';
+            addMessage({
+              id: generateId(),
+              type: 'done',
+              content: `完成 (输入: ${usage.prompt_tokens} tokens, 输出: ${usage.completion_tokens} tokens)`,
+              timestamp: Date.now(),
+            });
+            const files = fileStore.getAllFiles();
+            const indexHtml = files.find(f => f.path === 'index.html');
+            if (indexHtml) {
+              setActiveFile('index.html');
+            }
+          },
+          onSnip(before: number, after: number) {
+            addMessage({
+              id: generateId(),
+              type: 'system',
+              content: `[上下文裁剪] ${before} 条消息 → ${after} 条`,
+              timestamp: Date.now(),
+            });
+          },
+        }, conversationRef.current);
+      } catch (err) {
+        finalizeStream();
+        addMessage({
+          id: generateId(),
+          type: 'error',
+          content: err instanceof Error ? err.message : String(err),
+          timestamp: Date.now(),
+        });
+      }
+
+      setIsRunning(false);
+    },
+    [isRunning, addMessage, updateLastStreaming, finalizeStream, setActiveFile],
+  );
+  useImperativeHandle(ref, () => ({
+    onSend,
+  }), [onSend]);
 
   useEffect(() => {
     scrollToBottom();
@@ -125,4 +272,4 @@ export function ChatPanel({ messages, onSend, isRunning }: ChatPanelProps) {
       </div>
     </section>
   );
-}
+};
