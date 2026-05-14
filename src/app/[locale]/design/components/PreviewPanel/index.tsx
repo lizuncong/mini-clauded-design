@@ -5,10 +5,11 @@ import Editor from '@monaco-editor/react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { downloadAsZip } from '../../lib/download';
 import { fileStore } from '../../lib/tools';
+import { PREVIEW_PREFIX } from '../FilePanel/types';
 import { Toolbar } from './Toolbar';
 import { getLanguage, invalidateBlobUrls, resolveWithBlobUrls, snakeDesignTheme } from './util';
 
-export function PreviewPanel({ activeFile, showPreview }: PreviewPanelProps) {
+export function PreviewPanel({ activeFile }: PreviewPanelProps) {
   const [refreshKey, setRefreshKey] = useState(0);
   const [deviceMode, setDeviceMode] = useState<DeviceMode>('desktop');
   const frameRef = useRef<HTMLIFrameElement>(null);
@@ -25,7 +26,8 @@ export function PreviewPanel({ activeFile, showPreview }: PreviewPanelProps) {
     };
   }, []);
 
-  const file = activeFile ? fileStore.getFile(activeFile) : null;
+  const isPreview = activeFile?.startsWith(PREVIEW_PREFIX) ?? false;
+  const file = activeFile && !isPreview ? fileStore.getFile(activeFile) : null;
 
   const previewFile = useMemo(() => {
     void refreshKey;
@@ -72,7 +74,7 @@ export function PreviewPanel({ activeFile, showPreview }: PreviewPanelProps) {
   return (
     <section className="flex h-full flex-col bg-[#0d1117]">
       <Toolbar
-        showPreview={showPreview}
+        showPreview={isPreview}
         deviceMode={deviceMode}
         onDeviceChange={setDeviceMode}
         onRefresh={handleRefresh}
@@ -80,7 +82,7 @@ export function PreviewPanel({ activeFile, showPreview }: PreviewPanelProps) {
       />
 
       <div className="relative flex-1">
-        {showPreview
+        {isPreview
           ? (
               <div className={`h-full bg-white ${deviceMode === 'mobile' ? 'flex items-center justify-center overflow-auto' : ''}`}>
                 {previewContent
@@ -177,7 +179,7 @@ export function PreviewPanel({ activeFile, showPreview }: PreviewPanelProps) {
               )}
       </div>
 
-      {activeFile && !showPreview && (
+      {activeFile && !isPreview && (
         <div className="truncate border-t border-[#2a2a4e] bg-[#0f1929] px-4 py-1.5 text-[12px] text-[#aaa]">
           {activeFile}
         </div>

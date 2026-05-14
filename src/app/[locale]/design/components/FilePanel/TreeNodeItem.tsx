@@ -9,11 +9,9 @@ type TreeNodeItemProps = {
   depth: number;
   activeFile: string | null;
   onSelectFile: (path: string) => void;
-  showPreview?: boolean;
-  onTogglePreview?: () => void;
 };
 
-export function TreeNodeItem({ node, depth, activeFile, onSelectFile, showPreview, onTogglePreview }: TreeNodeItemProps) {
+export function TreeNodeItem({ node, depth, activeFile, onSelectFile }: TreeNodeItemProps) {
   const [expanded, setExpanded] = useState(true);
 
   const handleClick = useCallback(() => {
@@ -25,7 +23,6 @@ export function TreeNodeItem({ node, depth, activeFile, onSelectFile, showPrevie
   }, [node.isFolder, node.path, onSelectFile]);
 
   const isActive = !node.isFolder && node.path === activeFile;
-  const isIndexHtml = !node.isFolder && (node.name.toLowerCase() === 'index.html' || node.name.toLowerCase() === 'index.htm');
 
   return (
     <div>
@@ -60,23 +57,6 @@ export function TreeNodeItem({ node, depth, activeFile, onSelectFile, showPrevie
             )}
         <span className="flex-1 truncate">{node.name}</span>
       </button>
-      {isIndexHtml && onTogglePreview && (
-        <button
-          onClick={onTogglePreview}
-          className={`flex cursor-pointer items-center justify-center gap-2 rounded-lg px-3 py-2 text-[13px] font-medium transition-all duration-200 ${
-            showPreview
-              ? 'bg-[#0f3460] text-[#7ec699] shadow-[0_0_12px_rgba(126,198,153,0.15)]'
-              : 'bg-[#1a2744] text-[#8bb4f9] hover:bg-[#243355] hover:text-[#a0c8ff]'
-          }`}
-          style={{ marginLeft: `${8 + depth * 16}px`, marginTop: '4px' }}
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="15 14 20 9 15 4" />
-            <path d="M4 20v-7a4 4 0 014-4h12" />
-          </svg>
-          {showPreview ? '返回源码' : '效果预览'}
-        </button>
-      )}
       {node.isFolder && expanded && (
         <div>
           {node.children.map(child => (

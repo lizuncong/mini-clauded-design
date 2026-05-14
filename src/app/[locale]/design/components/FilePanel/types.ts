@@ -1,3 +1,5 @@
+export const PREVIEW_PREFIX = 'preview:';
+
 export type TreeNode = {
   name: string;
   path: string;
@@ -8,6 +10,4 @@ export type TreeNode = {
 export type FilePanelProps = {
   activeFile: string | null;
   onSelectFile: (path: string) => void;
-  onTogglePreview: () => void;
-  showPreview: boolean;
 };

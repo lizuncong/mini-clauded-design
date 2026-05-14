@@ -20,7 +20,6 @@ export function DesignLayout() {
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [activeFile, setActiveFile] = useState<string | null>(null);
-  const [showPreview, setShowPreview] = useState(false);
   const [initialConversation, setInitialConversation] = useState<LlmMessage[]>([]);
   const prevProjectIdRef = useRef<string | null>(null);
   const currentProjectIdRef = useRef<string | null>(null);
@@ -85,10 +84,6 @@ export function DesignLayout() {
     setActiveFile(path);
   }, []);
 
-  const handleTogglePreview = useCallback(() => {
-    setShowPreview(p => !p);
-  }, []);
-
   return (
     <div className="design-scrollbar flex h-screen flex-col overflow-hidden bg-[#1a1a2e] font-mono text-[#e0e0e0]">
       <Header />
@@ -109,10 +104,8 @@ export function DesignLayout() {
         <FilePanel
           activeFile={activeFile}
           onSelectFile={handleSelectFile}
-          onTogglePreview={handleTogglePreview}
-          showPreview={showPreview}
         />
-        <PreviewPanel activeFile={activeFile} showPreview={showPreview} />
+        <PreviewPanel activeFile={activeFile} />
       </ResizableLayout>
     </div>
   );
