@@ -32,21 +32,14 @@ export function PreviewPanel({ activeFile }: PreviewPanelProps) {
   const previewFile = useMemo(() => {
     void refreshKey;
     const files = fileStore.getAllFiles();
+
     const indexFile = files.find((f) => {
       const name = f.path.split('/').pop()?.toLowerCase();
       return name === 'index.html' || name === 'index.htm';
     });
-    if (indexFile) {
-      return indexFile;
-    }
-    if (activeFile) {
-      const ext = activeFile.split('.').pop()?.toLowerCase();
-      if (ext === 'html' || ext === 'htm') {
-        return fileStore.getFile(activeFile);
-      }
-    }
-    return null;
-  }, [activeFile, refreshKey]);
+
+    return indexFile ?? null;
+  }, [refreshKey]);
 
   const previewContent = useMemo(() => {
     void refreshKey;
