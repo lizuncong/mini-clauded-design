@@ -82,8 +82,8 @@ export function DesignLayout() {
   }, [messages, activeFile]);
 
   const handleSelectFile = useCallback((path: string) => {
-    setActiveFile(path === activeFile ? null : path);
-  }, [activeFile]);
+    setActiveFile(path);
+  }, []);
 
   const handleTogglePreview = useCallback(() => {
     setShowPreview(p => !p);

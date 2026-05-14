@@ -21,6 +21,38 @@ export const LANGUAGE_MAP: Record<string, string> = {
   md: 'markdown',
 };
 
+export const snakeDesignTheme: {
+  base?: 'vs' | 'vs-dark' | 'hc-black';
+  inherit?: boolean;
+  rules?: Array<{ token: string; foreground?: string; fontStyle?: string }>;
+  colors?: Record<string, string>;
+} = {
+  base: 'vs-dark',
+  inherit: true,
+  rules: [
+    { token: 'comment', foreground: '6A737D', fontStyle: 'italic' },
+    { token: 'keyword', foreground: 'F472B6' },
+    { token: 'string', foreground: '86EFAC' },
+    { token: 'number', foreground: 'FBBF24' },
+    { token: 'tag', foreground: '60A5FA' },
+    { token: 'attribute.name', foreground: 'C084FC' },
+    { token: 'attribute.value', foreground: '86EFAC' },
+    { token: 'type', foreground: '38BDF8' },
+  ],
+  colors: {
+    'editor.background': '#0d1117',
+    'editor.foreground': '#e6edf3',
+    'editorLineNumber.foreground': '#484f58',
+    'editorLineNumber.activeForeground': '#8b949e',
+    'editor.selectionBackground': '#264f7840',
+    'editor.lineHighlightBackground': '#161b2240',
+    'editorCursor.foreground': '#58a6ff',
+    'editor.inactiveSelectionBackground': '#264f7820',
+    'editorIndentGuide.background': '#21262d',
+    'editorIndentGuide.activeBackground': '#30363d',
+  },
+};
+
 const blobUrlCache = new Map<string, string>();
 
 export function getBlobUrl(path: string): string | null {
