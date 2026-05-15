@@ -3,7 +3,6 @@
 import type { DeviceMode, PreviewPanelProps } from './types';
 import Editor from '@monaco-editor/react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { downloadAsZip } from '../../lib/download';
 import { fileStore } from '../../lib/tools';
 import { PREVIEW_PREFIX } from '../FilePanel/types';
 import { Toolbar } from './Toolbar';
@@ -54,24 +53,14 @@ export function PreviewPanel({ activeFile }: PreviewPanelProps) {
     setRefreshKey(k => k + 1);
   }, []);
 
-  const handleDownload = useCallback(async () => {
-    const files = fileStore.getAllFiles();
-    if (files.length === 0) {
-      return;
-    }
-    await downloadAsZip(files, 'design-project');
-  }, []);
-
   const language = activeFile ? getLanguage(activeFile) : 'plaintext';
 
   return (
     <section className="flex h-full flex-col bg-[#0d1117]">
       <Toolbar
-        showPreview={isPreview}
         deviceMode={deviceMode}
         onDeviceChange={setDeviceMode}
         onRefresh={handleRefresh}
-        onDownload={handleDownload}
       />
 
       <div className="relative flex-1">
