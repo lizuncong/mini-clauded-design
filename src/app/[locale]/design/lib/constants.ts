@@ -106,6 +106,7 @@ Object.assign(window, { Button });
 \`\`\`
 
 **关键规则：**
+- 🚫 **严禁使用 \`export\` / \`export default\` / \`import\` 语句**。Babel Standalone 浏览器环境不支持 ES Module 语法，使用这些语句会导致组件无法加载。必须使用 \`Object.assign(window, { ComponentName })\` 导出组件。
 - 每个 \`<script type="text/babel">\` 有独立作用域，必须通过 \`Object.assign(window, { ComponentName })\` 导出才能被其他组件使用
 - 在 App.jsx 中，其他组件已经通过 script 标签引入后就可以直接使用，不需要 import 语句
 - 样式对象必须按组件命名（\`ButtonStyles\` 不是 \`styles\`）避免冲突
