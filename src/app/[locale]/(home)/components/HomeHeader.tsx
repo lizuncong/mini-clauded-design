@@ -24,6 +24,10 @@ export function HomeHeader() {
           {MODEL_LIST.map((m: ModelOption) => (
             <option key={m.id} value={m.id} className="bg-[#1a2744]">
               {m.label}
+              {m.free ? ' 🆓' : ''}
+              {m.context ? ` | ${m.context}` : ''}
+              {m.output ? ` →${m.output}` : ''}
+              {m.desc ? ` (${m.desc})` : ''}
             </option>
           ))}
         </select>

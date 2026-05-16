@@ -21,9 +21,9 @@ export function hasApiKey(): boolean {
 
 export function getModel(): string {
   if (typeof window === 'undefined') {
-    return 'glm-5v-turbo';
+    return 'glm-4.7-flash';
   }
-  return localStorage.getItem(STORAGE_KEYS.MODEL) || 'glm-5v-turbo';
+  return localStorage.getItem(STORAGE_KEYS.MODEL) || 'glm-4.7-flash';
 }
 
 export function setModel(model: string): void {

@@ -68,6 +68,13 @@ export type LlmToolCall = {
   function: { name: string; arguments: string };
 };
 
-export type ModelOption = { id: string; label: string };
+export type ModelOption = {
+  id: string;
+  label: string;
+  free?: boolean;
+  context?: string;
+  output?: string;
+  desc?: string;
+};
 
 export type SnipRecord = { fromId: string; toId: string; reason: string };

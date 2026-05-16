@@ -16,11 +16,36 @@ export function ModelsFooter() {
                 key={model.id}
                 className="rounded-lg border border-[#334466] bg-[#1a2744] p-3"
               >
-                <div className="mb-1 text-sm font-medium text-[#e0e0e0]">
-                  {model.label}
+                <div className="mb-1 flex items-center gap-2">
+                  <span className="text-sm font-medium text-[#e0e0e0]">
+                    {model.label}
+                  </span>
+                  {model.free && (
+                    <span className="rounded bg-[#2d5a3d] px-1.5 py-0.5 text-[10px] font-medium text-[#6ee7a7]">
+                      免费
+                    </span>
+                  )}
                 </div>
-                <div className="text-xs text-[#666]">
-                  {model.id}
+                {model.desc && (
+                  <div className="mb-1 text-xs text-[#888]">
+                    {model.desc}
+                  </div>
+                )}
+                <div className="flex gap-3 text-xs text-[#666]">
+                  {model.context && (
+                    <span>
+                      上下文:
+                      {' '}
+                      {model.context}
+                    </span>
+                  )}
+                  {model.output && (
+                    <span>
+                      输出:
+                      {' '}
+                      {model.output}
+                    </span>
+                  )}
                 </div>
               </div>
             );

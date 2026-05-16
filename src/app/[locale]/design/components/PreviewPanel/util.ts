@@ -97,6 +97,15 @@ export function resolveWithBlobUrls(htmlContent: string, basePath: string): stri
     /<script\s[^>]*src=["']([^"']+)["'][^>]*><\/script>/gi,
     (match, src) => {
       const fullPath = src.startsWith('/') ? src.slice(1) : dir + src;
+      const isBabelScript = match.includes('type="text/babel"') || match.includes('type=\'text/babel\'');
+      if (isBabelScript) {
+        const file = fileStore.getFile(fullPath);
+        if (file) {
+          const srcAttrMatch = match.match(/src=["'][^"']+["']/) ?? '';
+          const restOfTag = match.replace(String(srcAttrMatch), '');
+          return `<script type="text/babel"${restOfTag.replace('<script', '').replace('></script>', '')}>${file.content}</script>`;
+        }
+      }
       const url = getBlobUrl(fullPath);
       if (url) {
         return match.replace(src, url);
