@@ -93,7 +93,7 @@ const ButtonStyles = {
 
 <tailwind_setup>
 
-## Tailwind CSS 配置规范
+## Tailwind CSS v4 配置规范
 
 ### index.html 必须包含的脚本（按顺序）
 
@@ -121,38 +121,33 @@ const ButtonStyles = {
     <!-- ⭐ Tailwind CSS Play CDN v4 (必须包含) -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 
-    <!-- 自定义主题配置 -->
-    <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            colors: {
-              brand: {
-                50: '#fef3e8',
-                100: '#fde3cc',
-                200: '#fbc6a4',
-                300: '#f8a57a',
-                400: '#f5834f',
-                500: '#f26225',
-                600: '#d14f1c',
-                700: '#ab3e16',
-                800: '#853010',
-                900: '#5e230b',
-              },
-              accent: '#ff6b6b',
-            },
-            fontFamily: {
-              display: ['Poppins', 'system-ui', 'sans-serif'],
-              body: ['Inter', 'system-ui', 'sans-serif'],
-            },
-            borderRadius: {
-              '4xl': '2rem',
-              '5xl': '3rem',
-            },
-          },
-        },
-      };
-    </script>
+    <!-- 🎨 自定义主题配置（Tailwind CSS v4 使用 @theme 语法） -->
+    <style type="text/tailwindcss">
+      @theme {
+        /* 品牌色阶（橙红色系） */
+        --color-brand-50: #fef3e8;
+        --color-brand-100: #fde3cc;
+        --color-brand-200: #fbc6a4;
+        --color-brand-300: #f8a57a;
+        --color-brand-400: #f5834f;
+        --color-brand-500: #f26225;
+        --color-brand-600: #d14f1c;
+        --color-brand-700: #ab3e16;
+        --color-brand-800: #853010;
+        --color-brand-900: #5e230b;
+
+        /* 强调色（珊瑚红） */
+        --color-accent: #ff6b6b;
+
+        /* 自定义字体家族 */
+        --font-family-display: 'Poppins', 'system-ui', sans-serif;
+        --font-family-body: 'Inter', 'system-ui', sans-serif;
+
+        /* 自定义圆角 */
+        --radius-4xl: 2rem;
+        --radius-5xl: 3rem;
+      }
+    </style>
   </head>
   <body class="font-body">
     <div id="root"></div>
@@ -169,15 +164,18 @@ const ButtonStyles = {
 
 ### 自定义主题说明
 
-通过 `tailwind.config.theme.extend` 扩展默认主题：
+**Tailwind CSS v4 使用 `@theme {}` 语法定义设计令牌**，在 `<style type="text/tailwindcss">` 标签中声明：
 
-| 类别 | 自定义值 | 用途 |
-|------|---------|------|
-| **颜色** | `brand-{50-900}` | 品牌主色阶（橙红色系） |
-| **颜色** | `accent` | 强调色（珊瑚红） |
-| **字体** | `font-display` | 标题字体（Poppins） |
-| **字体** | `font-body` | 正文字体（Inter） |
-| **圆角** | `rounded-4xl` / `rounded-5xl` | 超大圆角 |
+| 类别 | CSS 变量名 | 对应 Tailwind 类名 | 用途 |
+|------|-----------|------------------|------|
+| **品牌色** | `--color-brand-{50-900}` | `bg-brand-{50-500}` / `text-brand-{50-900}` | 品牌主色阶（橙红色系） |
+| **强调色** | `--color-accent` | `bg-accent` / `text-accent` | 强调色（珊瑚红） |
+| **标题字体** | `--font-family-display` | `font-display` | Poppins 字体 |
+| **正文字体** | `--font-family-body` | `font-body` | Inter 字体 |
+| **超大圆角** | `--radius-4xl` / `--radius-5xl` | `rounded-4xl` / `rounded-5xl` | 特殊圆角需求 |
+
+> ⚠️ **注意**：v4 不再使用 `tailwind.config = { theme: { extend: {...} } }` 的旧语法！
+> 必须使用 `<style type="text/tailwindcss">` + `@theme {}` 的方式。
 
 </tailwind_setup>
 
@@ -514,7 +512,7 @@ Object.assign(window, { Navbar });
 
 **步骤 3** — **【强制】创建 index.html 文件**
 - ✅ 包含 **Tailwind CSS Play CDN v4** 脚本
-- ✅ 包含 **tailwind.config 自定义主题配置**
+- ✅ 包含 **`<style type="text/tailwindcss">` + `@theme {}` 自定义主题**
 - ✅ 包含 React + ReactDOM + Babel 三个 CDN 脚本
 - ✅ 引入所有 .jsx 文件（子组件在前，App 在后）
 
@@ -527,7 +525,7 @@ Object.assign(window, { Navbar });
 
 **确认 2**：调用 `read_file("index.html")` 读取内容
 - 确认包含 **Tailwind CDN 脚本**
-- 确认包含 **tailwind.config 主题配置**
+- 确认包含 **`<style type="text/tailwindcss">` + `@theme {}` 主题定义**
 - 确认包含 React + ReactDOM + Babel 三个 CDN 脚本
 
 **确认 3**：逐项核对下方「输出前自检清单」
@@ -654,7 +652,7 @@ root.render(<App />);
 
 - [ ] **【致命】index.html 文件已创建**
 - [ ] **【致命】index.html 包含 Tailwind CSS Play CDN v4 脚本**
-- [ ] **【致命】index.html 包含 tailwind.config 自定义主题配置**
+- [ ] **【致命】index.html 包含 `<style type="text/tailwindcss">` + `@theme {}` 自定义主题**
 - [ ] **【致命】index.html 包含 React + ReactDOM + Babel 三个 CDN 脚本**
 - [ ] **【致命】index.html 引入所有组件文件且顺序正确**
 
@@ -691,7 +689,7 @@ root.render(<App />);
 1. **永远不要写 `export default` 或 `import`** — 浏览器环境不支持 ES Module
 2. **永远不要忘记 `Object.assign(window, { Name })`** — 否则组件无法被引用
 3. **🆕 index.html 必须包含 Tailwind CSS Play CDN v4 脚本** — 否则 Tailwind 类名无效
-4. **🆕 index.html 必须包含 tailwind.config 主题配置** — 否则自定义 brand/accent/font 类不可用
+4. **🆕 index.html 必须包含 `<style type="text/tailwindcss">` + `@theme {}` 主题定义** — 否则自定义 brand/accent/font 类不可用
 5. **🆕 绝对禁止使用内联 style 对象** — 所有样式必须用 Tailwind className
 6. **🆕 绝对禁止定义样式对象（xxxStyles）** — 直接在 JSX 中写 Tailwind 类名
 7. **🆕 必须使用响应式断点**（`sm:` `md:` `lg:`）— 不能只做桌面端
@@ -713,7 +711,7 @@ root.render(<App />);
 3. 我要加入响应式断点适配 ✅
 
 **如果用户要求创建任何页面/组件/设计，你的输出必须包含：**
-- 至少 1 个 index.html 文件（**必须包含 Tailwind CDN + tailwind.config**）
+- 至少 1 个 index.html 文件（**必须包含 Tailwind CDN + `<style type="text/tailwindcss">` + `@theme {}`**)
 - 至少 1 个 App.jsx 文件（**纯 Tailwind 类名实现**）
 - 至少 1 个或多个子组件 .jsx 文件（**包含响应式断点和交互状态**）
 
