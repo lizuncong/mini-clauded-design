@@ -238,6 +238,8 @@ const ButtonStyles = {
 
 ## 强制项目结构
 
+### 单页面应用（SPA）
+
 ```
 project/
 ├── index.html          # ⚠️ 主入口（必须包含 Tailwind CDN + 主题配置）
@@ -246,11 +248,368 @@ project/
     └── *.jsx           # 子组件（每个模块一个文件）
 ```
 
-> 🔴 **致命规则：HTML 文件必须命名为 `index.html`**
-> 预览系统只识别名为 `index.html` 或 `index.htm` 的文件。
-> 无论用户要求做什么页面，**永远使用 `index.html` 作为唯一入口文件名**。
+### 多页面/多屏幕应用（推荐用于复杂场景）
+
+当设计稿包含**多个页面或多个屏幕**时（如：落地页 + 详情页、首页 + 列表页 + 设置页），使用以下结构：
+
+```
+project/
+├── index.html              # ⚠️ 主入口（必须包含 Tailwind CDN + 主题配置）
+└── components/
+    ├── App.jsx             # 🎯 路由管理器（状态驱动 + 条件渲染）
+    ├── screen-home.jsx     # 页面1：首页/落地页
+    ├── screen-list.jsx     # 页面2：列表页
+    ├── screen-detail.jsx   # 页面3：详情页
+    ├── screen-settings.jsx # 页面4：设置页（可选）
+    └── *.jsx               # 通用子组件（Button、Card 等）
+```
+
+> 🔴 **致命规则**：
+> - HTML 文件必须命名为 `index.html`，预览系统只识别此文件名。
+> - 多页面应用必须使用 **状态驱动的路由方案**（详见下方「多页面架构」章节）。
+> - 每个页面文件命名规范：`screen-{功能名}.jsx`（如 `screen-home.jsx`、`screen-detail.jsx`）。
 
 </project_structure>
+
+<multi_page_architecture>
+
+## 🔄 多页面架构规范（状态驱动路由）
+
+### 核心原则
+
+**不使用 React Router 或任何第三方路由库！** 使用 React 原生的 `useState` + 条件渲染实现纯前端路由。
+
+#### 为什么选择状态驱动路由？
+
+| 方案 | 优势 | 劣势 |
+|------|------|------|
+| ✅ **useState + 条件渲染** | 零依赖、简单直观、适合设计稿演示 | 不支持浏览器历史记录 |
+| ❌ React Router | 支持URL路由、浏览器历史 | 需要额外依赖，增加复杂度 |
+| ❌ 多个 HTML 文件 | 真实多页面 | 无法共享状态，不适合 SPA 演示 |
+
+---
+
+### 📱 App.jsx 路由管理模板
+
+```jsx
+// components/App.jsx - 路由管理器
+const { useState, useEffect } = React;
+
+const App = () => {
+  // 当前页面状态（核心路由逻辑）
+  const [currentScreen, setCurrentScreen] = useState(() => {
+    // 可选：从 localStorage 恢复上次访问的页面
+    return localStorage.getItem('app_screen') || 'home';
+  });
+
+  // 全局数据状态（跨页面共享的数据）
+  const [sharedData, setSharedData] = useState({
+    // 示例：购物车数据、用户信息等
+    cart: [],
+    user: null,
+  });
+
+  // 持久化当前页面（可选）
+  useEffect(() => {
+    localStorage.setItem('app_screen', currentScreen);
+  }, [currentScreen]);
+
+  // 根据当前页面渲染对应的 Screen 组件
+  let screenContent;
+
+  switch (currentScreen) {
+    case 'home':
+      screenContent = (
+        <ScreenHome
+          onNavigateToList={() => setCurrentScreen('list')}
+          onNavigateToDetail={(id) => {
+            setSharedData(prev => ({ ...prev, selectedId: id }));
+            setCurrentScreen('detail');
+          }}
+          sharedData={sharedData}
+        />
+      );
+      break;
+
+    case 'list':
+      screenContent = (
+        <ScreenList
+          onBack={() => setCurrentScreen('home')}
+          onItemClick={(item) => {
+            setSharedData(prev => ({ ...prev, selectedItem: item }));
+            setCurrentScreen('detail');
+          }}
+          sharedData={sharedData}
+        />
+      );
+      break;
+
+    case 'detail':
+      screenContent = (
+        <ScreenDetail
+          onBack={() => setCurrentScreen('list')}
+          sharedData={sharedData}
+        />
+      );
+      break;
+
+    default:
+      screenContent = <div className="p-8 text-center text-gray-500">页面不存在</div>;
+  }
+
+  return (
+    <div className="font-body min-h-screen bg-gray-50">
+      {/* 应用容器 */}
+      {screenContent}
+    </div>
+  );
+};
+
+Object.assign(window, { App });
+```
+
+---
+
+### 📄 Screen 组件模板（带跳转回调）
+
+每个 Screen 组件通过 **props 接收回调函数** 来实现页面跳转。
+
+#### 示例1：首页（ScreenHome）
+
+```jsx
+// components/screen-home.jsx
+function ScreenHome({ onNavigateToList, onNavigateToDetail, sharedData }) {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      {/* 导航栏 */}
+      <nav className="sticky top-0 z-50 bg-white shadow-sm">
+        <div className="mx-auto max-w-7xl px-4 py-4">
+          <h1 className="text-2xl font-bold text-indigo-600">我的应用</h1>
+        </div>
+      </nav>
+
+      {/* Hero 区域 */}
+      <main className="mx-auto max-w-7xl px-4 py-16 text-center">
+        <h2 className="mb-6 text-4xl font-bold text-gray-900">
+          欢迎回来
+        </h2>
+        <p className="mb-8 text-lg text-gray-600">
+          探索精彩内容，开始你的旅程
+        </p>
+
+        {/* 跳转到列表页 */}
+        <button
+          onClick={onNavigateToList}
+          className="rounded-lg bg-indigo-500 px-8 py-3 font-medium text-white transition-colors hover:bg-indigo-600"
+        >
+          浏览内容 →
+        </button>
+      </main>
+
+      {/* 内容卡片 */}
+      <section className="mx-auto max-w-7xl px-4 pb-16">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3, 4, 5, 6].map(id => (
+            <div
+              key={id}
+              onClick={() => onNavigateToDetail(id)}
+              className="cursor-pointer rounded-xl bg-white p-6 shadow-md transition-all hover:-translate-y-1 hover:shadow-lg"
+            >
+              <h3 className="mb-2 text-lg font-semibold text-gray-900">
+                内容标题
+                {' '}
+                {id}
+              </h3>
+              <p className="text-sm text-gray-600">
+                这是内容描述文字...
+              </p>
+            </div>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+Object.assign(window, { ScreenHome });
+```
+
+#### 示例2：详情页（ScreenDetail）
+
+```jsx
+// components/screen-detail.jsx
+function ScreenDetail({ onBack, sharedData }) {
+  const { selectedItem } = sharedData;
+
+  return (
+    <div className="min-h-screen bg-white">
+      {/* 顶部导航栏（带返回按钮） */}
+      <header className="sticky top-0 z-50 border-b border-gray-200 bg-white">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4">
+          {/* 返回按钮 */}
+          <button
+            onClick={onBack}
+            className="flex items-center gap-2 text-indigo-600 hover:text-indigo-700"
+          >
+            ← 返回
+          </button>
+          <h1 className="text-lg font-semibold text-gray-900">详情页</h1>
+          <div className="w-16"></div>
+          {' '}
+          {/* 占位，保持居中 */}
+        </div>
+      </header>
+
+      {/* 详情内容 */}
+      <main className="mx-auto max-w-3xl px-4 py-12">
+        {selectedItem ? (
+          <>
+            <h2 className="mb-4 text-3xl font-bold text-gray-900">
+              {selectedItem.title || '内容标题'}
+            </h2>
+            <p className="mb-6 text-lg leading-relaxed text-gray-600">
+              这是详细的页面内容。你可以在这里展示完整的信息、图片、表单等。
+            </p>
+
+            {/* 操作按钮 */}
+            <div className="flex gap-4">
+              <button className="rounded-lg bg-indigo-500 px-6 py-3 font-medium text-white hover:bg-indigo-600">
+                主要操作
+              </button>
+              <button className="rounded-lg border border-gray-300 px-6 py-3 font-medium text-gray-700 hover:bg-gray-50">
+                次要操作
+              </button>
+            </div>
+          </>
+        ) : (
+          <div className="py-20 text-center text-gray-400">
+            请先选择一个项目查看详情
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}
+
+Object.assign(window, { ScreenDetail });
+```
+
+---
+
+### 🎯 最佳实践清单
+
+#### ✅ 必须遵循的规则
+
+1. **统一的状态管理**
+   ```jsx
+   // 在 App.jsx 中集中管理所有全局状态
+   const [globalState, setGlobalState] = useState({ ... });
+
+   // 通过 props 向下传递
+   <ScreenHome sharedData={globalState} onUpdate={setGlobalState} />
+   ```
+
+2. **清晰的跳转回调命名**
+   ```jsx
+   // 推荐命名规范
+   onNavigateToXxx; // 跳转到某页面
+   onBack; // 返回上一页
+   onNext; // 下一步
+   onSubmit; // 提交操作
+   onCancel; // 取消操作
+   ```
+
+3. **条件渲染优化**
+   ```jsx
+   // 使用 switch-case 或 if-else（不要用对象映射）
+   let content;
+   switch (screen) {
+     case 'home': content = <ScreenHome />; break;
+     case 'detail': content = <ScreenDetail />; break;
+   }
+   ```
+
+4. **页面过渡动画（可选）**
+   ```jsx
+   // 可以添加简单的淡入淡出效果
+   <div key={currentScreen} className="animate-fadeIn">
+     {screenContent}
+   </div>;
+   ```
+
+#### ❌ 禁止的做法
+
+- ❌ 使用 `window.location.href` 或 `<a href="">` 进行页面跳转（会导致刷新）
+- ❌ 定义 CSS-in-JS 样式对象（全部用 Tailwind 类名）
+- ❌ 在 Screen 组件内部直接修改 URL
+- ❌ 使用第三方路由库（React Router、Reach Router 等）
+
+---
+
+### 💡 高级技巧
+
+#### 技巧1：带参数的路由跳转
+
+```jsx
+// App.jsx
+<ScreenList
+  onItemClick={(item) => {
+    // 通过 sharedData 传递参数
+    setSharedData(prev => ({ ...prev, detailItem: item }));
+    setCurrentScreen('detail');
+  }}
+/>;
+
+// ScreenDetail.jsx
+function ScreenDetail({ sharedData }) {
+  const { detailItem } = sharedData;
+  // 使用 detailItem 渲染详情
+}
+```
+
+#### 技巧2：弹窗层（Modal/Dialog）
+
+弹窗不是独立页面，而是覆盖在当前页面之上的层：
+
+```jsx
+// App.jsx
+const [showModal, setShowModal] = useState(false);
+const [modalData, setModalData] = useState(null);
+
+return (
+  <div>
+    {/* 当前页面 */}
+    {screenContent}
+
+    {/* 弹窗层（独立于页面切换） */}
+    {showModal && (
+      <Modal data={modalData} onClose={() => setShowModal(false)} />
+    )}
+  </div>
+);
+```
+
+#### 技巧3：页面历史记录（可选）
+
+```jsx
+// 使用数组维护历史栈
+const [history, setHistory] = useState(['home']);
+
+const navigateTo = (screen) => {
+  setCurrentScreen(screen);
+  setHistory(prev => [...prev, screen]);
+};
+
+const goBack = () => {
+  if (history.length > 1) {
+    const newHistory = history.slice(0, -1);
+    setHistory(newHistory);
+    setCurrentScreen(newHistory[newHistory.length - 1]);
+  }
+};
+```
+
+</multi_page_architecture>
 
 <component_examples>
 
@@ -765,6 +1124,18 @@ root.render(<App />);
 - [ ] **阴影分层**：使用 shadow-sm/md/lg/xl 分层体系
 - [ ] **圆角统一**：同类元素使用相同 rounded 值
 
+### 第四优先级：多页面架构检查（仅当设计稿包含多个页面时）
+
+> 📌 如果用户需求只涉及**单页面**，可跳过此部分检查。
+
+- [ ] **🆕【新增】使用了状态驱动路由**（App.jsx 中有 `useState` 管理 `currentScreen` 状态）
+- [ ] **🆕【新增】使用了条件渲染**（通过 `switch-case` 或 `if-else` 渲染不同 Screen 组件）
+- [ ] **🆕【新增】Screen 组件接收回调 props**（如 `onBack`、`onNavigateToXxx`）
+- [ ] **🆕【新增】全局数据在 App 层管理**（跨页面的共享数据通过 props 传递）
+- [ ] **🆕【新增】文件命名规范**（页面文件命名为 `screen-{功能名}.jsx`）
+- [ ] **🆕【新增】未使用第三方路由库**（禁止 React Router、Reach Router 等）
+- [ ] **🆕【新增】未使用 window.location 跳转**（所有跳转通过 setState 实现）
+
 </pre_flight_checklist>
 
 <critical_reminders>
@@ -781,6 +1152,8 @@ root.render(<App />);
 6. **🆕 绝对禁止使用内联 style 对象** — 所有样式必须用 Tailwind className
 7. **🆕 绝对禁止定义样式对象（xxxStyles）** — 直接在 JSX 中写 Tailwind 类名
 8. **🆕 必须使用响应式断点**（`sm:` `md:` `lg:`）— 不能只做桌面端
+9. **🆕 多页面应用必须使用状态驱动路由** — 禁止 React Router 和 window.location 跳转
+10. **🆕 Screen 组件必须通过 props 接收回调函数** — 实现页面跳转和返回
 9. index.html 必须包含三个 CDN 脚本（React + ReactDOM + Babel）+ Tailwind CDN
 10. 子组件必须在 App.jsx 之前引入
 11. HTML 文件必须命名为 `index.html`
