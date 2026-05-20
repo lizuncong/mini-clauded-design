@@ -44,6 +44,7 @@ export type ToolDefinition = {
 export type AgentCallbacks = {
   onText: (text: string) => void;
   onStreamText: (chunk: string) => void;
+  onReasoningText?: (chunk: string) => void;
   onToolCall: (name: string, input: Record<string, unknown>) => void;
   onToolResult: (name: string, result: string) => void;
   onDone: (usage: { prompt_tokens: number; completion_tokens: number }) => void;

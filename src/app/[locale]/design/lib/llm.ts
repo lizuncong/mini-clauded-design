@@ -32,8 +32,10 @@ export function setModel(model: string): void {
 
 type StreamCallbacks = {
   onTextChunk?: (chunk: string) => void;
+  onReasoningChunk?: (chunk: string) => void;
   onDone?: (accumulated: {
     content: string;
+    reasoning: string;
     tool_calls: Array<{
       id: string;
       type: 'function';
@@ -123,6 +125,7 @@ export async function callZhipuStream(
 
   const accumulated = {
     content: '',
+    reasoning: '',
     tool_calls: [] as NonNullable<LlmResponse['choices'][0]['message']['tool_calls']>,
     usage: { prompt_tokens: 0, completion_tokens: 0 },
     finish_reason: null as string | null,
@@ -160,6 +163,11 @@ export async function callZhipuStream(
         if (delta.content && typeof delta.content === 'string') {
           accumulated.content += delta.content;
           callbacks.onTextChunk?.(delta.content);
+        }
+
+        if (delta.reasoning_content && typeof delta.reasoning_content === 'string') {
+          accumulated.reasoning += delta.reasoning_content;
+          callbacks.onReasoningChunk?.(delta.reasoning_content);
         }
 
         if (Array.isArray(delta.tool_calls)) {

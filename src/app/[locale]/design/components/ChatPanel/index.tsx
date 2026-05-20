@@ -6,6 +6,7 @@ import { useCallback, useEffect, useImperativeHandle, useRef, useState } from 'r
 import { runAgent } from '../../lib/agent';
 import { fileStore } from '../../lib/file-store';
 import { ChatBubble } from './ChatBubble';
+import { ThinkingCard } from './ThinkingCard';
 import { ToolCard } from './ToolCard';
 
 let msgIdCounter = 0;
@@ -64,6 +65,26 @@ export const ChatPanel = function ChatPanel(
     });
   }, [setMessages]);
 
+  const updateLastThinking = useCallback((content: string) => {
+    setMessages((prev) => {
+      const updated = [...prev];
+      for (let i = updated.length - 1; i >= 0; i--) {
+        const item = updated[i];
+        if (item?.type === 'thinking' && item?.isStreaming) {
+          updated[i] = {
+            id: item.id,
+            type: 'thinking',
+            content: item.content + content,
+            isStreaming: true,
+            timestamp: item.timestamp,
+          };
+          break;
+        }
+      }
+      return updated;
+    });
+  }, [setMessages]);
+
   const finalizeStream = useCallback(() => {
     setMessages(prev =>
       prev
@@ -71,6 +92,7 @@ export const ChatPanel = function ChatPanel(
         .filter(m => !(m.type === 'assistant' && !m.content.trim())),
     );
   }, [setMessages]);
+
   const onSend = useCallback(
     async (input: string) => {
       if (isRunning) {
@@ -86,6 +108,7 @@ export const ChatPanel = function ChatPanel(
       });
 
       let currentStreamId = '';
+      let currentThinkingId = '';
 
       try {
         conversationRef.current = await runAgent(input, {
@@ -109,6 +132,19 @@ export const ChatPanel = function ChatPanel(
               });
             }
             updateLastStreaming(chunk);
+          },
+          onReasoningText(chunk: string) {
+            if (!currentThinkingId) {
+              currentThinkingId = generateId();
+              addMessage({
+                id: currentThinkingId,
+                type: 'thinking',
+                content: '',
+                isStreaming: true,
+                timestamp: Date.now(),
+              });
+            }
+            updateLastThinking(chunk);
           },
           onToolCall(name: string, inputArgs: Record<string, unknown>) {
             finalizeStream();
@@ -167,7 +203,7 @@ export const ChatPanel = function ChatPanel(
 
       setIsRunning(false);
     },
-    [isRunning, addMessage, updateLastStreaming, finalizeStream, setActiveFile],
+    [isRunning, addMessage, updateLastStreaming, updateLastThinking, finalizeStream, setActiveFile],
   );
   useImperativeHandle(ref, () => ({
     onSend,
@@ -256,6 +292,16 @@ export const ChatPanel = function ChatPanel(
               <div className="mx-auto max-w-[88%] rounded-xl border border-solid border-[rgba(220,53,69,0.2)] bg-[rgba(220,53,69,0.12)] px-3.5 py-2 text-xs text-[#f56c6c]">
                 {msg.content}
               </div>
+            )}
+            {msg.type === 'thinking' && (
+              <ThinkingCard
+                message={msg}
+                onToggleExpand={() => {
+                  setMessages(prev => prev.map(m =>
+                    m.id === msg.id ? { ...m, isExpanded: !m.isExpanded } : m,
+                  ));
+                }}
+              />
             )}
           </div>
         ))}
