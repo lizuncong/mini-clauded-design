@@ -85,6 +85,12 @@ export const ChatPanel = function ChatPanel(
     });
   }, [setMessages]);
 
+  const collapseThinking = useCallback(() => {
+    setMessages(prev =>
+      prev.map(m => (m.type === 'thinking' && m.isStreaming ? { ...m, isStreaming: false } : m)),
+    );
+  }, [setMessages]);
+
   const finalizeStream = useCallback(() => {
     setMessages(prev =>
       prev
@@ -123,6 +129,7 @@ export const ChatPanel = function ChatPanel(
           onStreamText(chunk: string) {
             if (!currentStreamId) {
               currentStreamId = generateId();
+              collapseThinking();
               addMessage({
                 id: currentStreamId,
                 type: 'assistant',
@@ -149,6 +156,7 @@ export const ChatPanel = function ChatPanel(
           onToolCall(name: string, inputArgs: Record<string, unknown>) {
             finalizeStream();
             currentStreamId = '';
+            currentThinkingId = '';
             addMessage({
               id: generateId(),
               type: 'tool-call',
@@ -203,7 +211,7 @@ export const ChatPanel = function ChatPanel(
 
       setIsRunning(false);
     },
-    [isRunning, addMessage, updateLastStreaming, updateLastThinking, finalizeStream, setActiveFile],
+    [isRunning, addMessage, updateLastStreaming, updateLastThinking, collapseThinking, finalizeStream, setActiveFile],
   );
   useImperativeHandle(ref, () => ({
     onSend,

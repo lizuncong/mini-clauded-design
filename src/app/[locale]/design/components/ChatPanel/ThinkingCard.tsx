@@ -12,6 +12,7 @@ export function ThinkingCard({ message, onToggleExpand }: ThinkingCardProps) {
   const isExpanded = !isStreaming && message.isExpanded;
 
   if (isStreaming) {
+    const displayContent = message.content.replace(/\n{3,}/g, '\n\n').trimStart();
     return (
       <div className="mx-auto max-w-[88%]">
         <div className="mb-1 flex items-center gap-1.5 px-1">
@@ -21,12 +22,14 @@ export function ThinkingCard({ message, onToggleExpand }: ThinkingCardProps) {
           <span className="text-[11px] font-medium tracking-wide text-[#c9a227]">推理过程</span>
         </div>
         <div className="rounded-xl border border-solid border-[rgba(201,162,39,0.15)] bg-[rgba(201,162,39,0.06)] px-3.5 py-2.5">
-          <pre className="text-[12px] leading-relaxed break-words whitespace-pre-wrap text-[#b8a05d]">{message.content}</pre>
+          <pre className="text-[12px] leading-relaxed break-words whitespace-pre-wrap text-[#b8a05d]">{displayContent || ' '}</pre>
           <span className="ml-0.5 inline-block h-[13px] w-[6px] animate-pulse bg-[#c9a227]/60 align-text-bottom" />
         </div>
       </div>
     );
   }
+
+  const displayContent = message.content.replace(/\n{3,}/g, '\n\n').trimStart();
 
   return (
     <button
@@ -39,7 +42,7 @@ export function ThinkingCard({ message, onToggleExpand }: ThinkingCardProps) {
       </svg>
       <span className="text-[11px] font-medium tracking-wide text-[#c9a227]">推理过程</span>
       {isExpanded && (
-        <pre className="mt-1.5 w-full border-t border-dashed border-[rgba(201,162,39,0.12)] pt-1.5 text-[11.5px] leading-relaxed break-words whitespace-pre-wrap text-[#9a8556]">{message.content}</pre>
+        <pre className="mt-1.5 w-full border-t border-dashed border-[rgba(201,162,39,0.12)] pt-1.5 text-[11.5px] leading-relaxed break-words whitespace-pre-wrap text-[#9a8556]">{displayContent}</pre>
       )}
     </button>
   );
