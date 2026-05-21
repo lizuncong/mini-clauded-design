@@ -1,5 +1,6 @@
 import type { SnipRecord, ToolDefinition } from './types';
 import { fileStore } from './file-store';
+import { runVisualReviewAgent } from './review-agent';
 
 const toolRegistry = new Map<string, ToolDefinition>();
 
@@ -184,9 +185,42 @@ export function trimMessages(
   return result;
 }
 
+const reviewTool = {
+  name: 'visual_review',
+  description: `启动全面质量审查子代理（视觉设计 + 代码质量）。该工具会：
+
+**视觉设计审查**：
+- 视觉层次、间距一致性、色彩协调
+- 交互状态、响应式适配、细节质量
+
+**代码生成质量审查**：
+- 组件架构：拆分合理性、职责单一性、Props 设计、状态管理
+- React 最佳实践：Hooks 使用、性能优化、Key 属性、条件渲染
+- 代码可读性：命名规范、函数长度、注释质量、魔术数字
+- HTML/CSS 质量：语义化标签、可访问性、CSS 组织
+- 错误处理：边界情况、类型安全、数据验证
+
+工作流程：
+1. 自动读取项目文件（index.html、App.jsx 及关键组件）
+2. 按照专业标准进行全面检查
+3. 发现问题后自动修正文件
+4. 返回结构化审查报告和修改的文件列表
+
+建议在完成主要代码编写后调用此工具进行质量把关。`,
+  input_schema: {
+    type: 'object',
+    properties: {},
+  },
+  async execute() {
+    const result = await runVisualReviewAgent();
+    return `全面质量审查完成。\n\n修改的文件：\n${result.filesModified.map(f => `- ${f}`).join('\n') || '（无修改）'}\n\n审查报告：\n${result.report}`;
+  },
+};
+
 for (const tool of Object.values(fsTools)) {
   registerTool(tool as unknown as ToolDefinition);
 }
 registerTool(snipTool as unknown as ToolDefinition);
+registerTool(reviewTool as unknown as ToolDefinition);
 
 export { fileStore };

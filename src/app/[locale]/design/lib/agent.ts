@@ -4,22 +4,6 @@ import { callZhipuStream } from './llm';
 import { SYSTEM_PROMPT } from './system-prompt';
 import { dispatchTool, executeSnips, getToolDefinitions, tagUserMessage, trimMessages } from './tools';
 
-const REVIEW_PROMPT = `请进行设计质量审查。
-
-**步骤一**：用 list_files 确认所有文件。
-**步骤二**：必读 index.html 和 App.jsx。
-**步骤三**：从子组件中挑选 2-3 个最复杂的文件用 read_file 阅读（无需全部读完）。
-
-审查维度：
-1. 视觉层次：字号、字重、颜色是否有 3 层以上对比
-2. 间距一致性：同类元素间距是否统一，是否有足够留白
-3. 色彩协调：主色与中性色比例是否合理，功能色使用是否正确
-4. 交互状态：按钮/链接/卡片是否有 hover/focus/active 状态
-5. 响应式：是否使用了 sm:/md:/lg: 断点适配不同屏幕
-6. 细节质量：圆角、阴影层级、图标尺寸是否协调统一
-
-发现问题请立即用 write_file 修正，无需修改的部分不要动。`;
-
 function estimateTokens(messages: LlmMessage[], systemPrompt: string): number {
   let chars = systemPrompt.length;
   for (const msg of messages) {
@@ -58,8 +42,6 @@ export async function runAgent(
   }));
 
   let turnCount = 0;
-  let hasWrittenFiles = false;
-  let reviewDone = false;
 
   while (turnCount < MAX_TURNS) {
     turnCount++;
@@ -115,12 +97,6 @@ export async function runAgent(
     messages.push(assistantMsg);
 
     if (finishReason !== 'tool_calls' || !msg.tool_calls || msg.tool_calls.length === 0) {
-      if (hasWrittenFiles && !reviewDone) {
-        reviewDone = true;
-        callbacks.onText('\n[设计审查] ');
-        userInput = REVIEW_PROMPT;
-        continue;
-      }
       callbacks.onDone(usage);
       return messages;
     }
@@ -132,10 +108,6 @@ export async function runAgent(
           ? (JSON.parse(fn.arguments) as Record<string, unknown>)
           : (fn.arguments as Record<string, unknown>);
       callbacks.onToolCall(fn.name, input);
-
-      if (fn.name === 'write_file') {
-        hasWrittenFiles = true;
-      }
 
       try {
         const result = await dispatchTool(fn.name, input);
