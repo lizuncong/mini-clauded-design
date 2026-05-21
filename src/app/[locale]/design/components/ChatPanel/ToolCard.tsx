@@ -11,39 +11,71 @@ type ToolCardProps = {
 export function ToolCard({ type, name, content }: ToolCardProps) {
   const [expanded, setExpanded] = useState(false);
   const isCall = type === 'call';
-  const summaryText = isCall
-    ? `${name}(${content.slice(0, 80)}${content.length > 80 ? '...' : ''})`
-    : content.slice(0, 100) + (content.length > 100 ? '...(点击展开)' : '');
+
+  const summaryText = content.slice(0, 80) + (content.length > 80 ? '...' : '');
 
   return (
-    <div className={`mt-1 max-w-[88%] overflow-hidden rounded-xl border border-solid ${isCall ? 'border-[#243049]' : 'border-[#243049]'} bg-[#151d2c] ${expanded ? '' : ''}`}>
-      <button
-        onClick={() => setExpanded(!expanded)}
-        className="flex w-full cursor-pointer items-center gap-1.5 px-3 py-1.75 text-left transition-colors duration-150 select-none hover:bg-[#1a2436]"
+    <div className="mx-auto w-full">
+      <div className={`overflow-hidden rounded-lg border transition-all duration-200 ${
+        isCall
+          ? 'border-[#22c55e]/20 bg-[#0d1a12]'
+          : 'border-[#f59e0b]/20 bg-[#1a1612]'
+      }`}
       >
-        <span className={`text-[13px] ${isCall ? 'text-[#7ec699]' : 'text-[#e6c07b]'}`}>
-          {isCall ? '\u26A1' : '\u2705'}
-        </span>
-        <span className={`text-[12px] font-semibold ${isCall ? 'text-[#7ec699]' : 'text-[#e6c07b]'}`}>
-          {name}
-        </span>
-        <span className="mr-2 flex-1 truncate text-[11px] text-[#8899aa]">
-          {summaryText}
-        </span>
-        <span
-          className={`w-4 shrink-0 text-center text-[11px] text-[#556677] transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left transition-colors duration-150 select-none hover:bg-white/[0.02]"
         >
-          &#9660;
-        </span>
-      </button>
-      <div
-        className={`overflow-hidden transition-all duration-300 ease-out ${
-          expanded ? 'max-h-[300px] overflow-y-auto' : 'max-h-0'
-        }`}
-      >
-        <pre className="border-t border-[#1e2a3e] p-3 pt-2 pb-3 font-mono text-[11.5px] leading-relaxed break-all whitespace-pre-wrap text-[#a8bccf]">
-          {content}
-        </pre>
+          <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md ${
+            isCall ? 'bg-[#22c55e]/15' : 'bg-[#f59e0b]/15'
+          }`}
+          >
+            {isCall
+              ? (
+                  <svg className="h-3 w-3 text-[#4ade80]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                )
+              : (
+                  <svg className="h-3 w-3 text-[#fbbf24]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                )}
+          </div>
+
+          <span className={`text-[11.5px] font-semibold ${isCall ? 'text-[#4ade80]' : 'text-[#fbbf24]'}`}>
+            {name}
+          </span>
+
+          {!expanded && summaryText && (
+            <span className="truncate text-[11px] text-[#64748b]">{summaryText}</span>
+          )}
+
+          <svg
+            className={`ml-auto h-3.5 w-3.5 shrink-0 text-[#475569] transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+
+        <div
+          className={`overflow-hidden transition-all duration-300 ease-out ${
+            expanded ? 'max-h-[400px] opacity-100' : 'max-h-0 opacity-0'
+          }`}
+        >
+          <div className={`border-t px-3 pt-2 pb-2.5 ${
+            isCall ? 'border-[#22c55e]/10 bg-black/20' : 'border-[#f59e0b]/10 bg-black/20'
+          }`}
+          >
+            <pre className="font-mono text-[11.5px] leading-relaxed break-all whitespace-pre-wrap text-[#94a3b8]">
+              {content}
+            </pre>
+          </div>
+        </div>
       </div>
     </div>
   );
