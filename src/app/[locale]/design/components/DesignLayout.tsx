@@ -10,6 +10,8 @@ import { getProject, updateProjectState } from '@/libs/db/projects';
 import { useRouter } from '@/libs/i18n/navigation';
 import ResizableLayout from '../../../../components/ResizableLayout';
 import { getApiKey, getBaseUrl, getModel } from '../../design/lib/model-config';
+import { MAIN_AGENT_SYSTEM_PROMPT } from '../prompts/main-agent';
+import { VISUAL_REVIEWER_PROMPT } from '../prompts/visual-reviewer';
 import { ChatPanel } from './ChatPanel';
 import { FilePanel } from './FilePanel';
 import { Header } from './Header';
@@ -17,13 +19,23 @@ import { PreviewPanel } from './PreviewPanel';
 
 function getAgentConfig() {
   if (typeof window === 'undefined') {
-    return { apiKey: '', baseUrl: '', model: '' };
+    return { apiKey: '', baseUrl: '', model: '', systemPrompt: '' };
   }
   const baseUrl = getBaseUrl();
   return {
     apiKey: getApiKey(baseUrl),
     baseUrl: baseUrl || 'https://open.bigmodel.cn/api/paas/v4',
     model: getModel(),
+    systemPrompt: MAIN_AGENT_SYSTEM_PROMPT,
+    subAgents: {
+      'visual-reviewer': {
+        name: 'visual-reviewer',
+        description: 'Visual design and code quality review expert. Analyzes UI/UX design, component architecture, React best practices, and code readability. Automatically fixes issues found.',
+        prompt: VISUAL_REVIEWER_PROMPT,
+        tools: ['read_file', 'list_files', 'write_file'],
+        maxTurns: 8,
+      },
+    },
   };
 }
 

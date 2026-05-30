@@ -35,12 +35,22 @@ export type ToolDefinition = {
 
 export type SnipRecord = { fromId: string; toId: string; reason: string };
 
+export type SubAgentDefinition = {
+  name: string;
+  description: string;
+  prompt: string;
+  tools?: string[];
+  model?: string;
+  maxTurns?: number;
+};
+
 export type AgentConfig = {
   apiKey: string;
   baseUrl: string;
   model: string;
-  systemPrompt?: string;
+  systemPrompt: string;
   maxTokens?: number;
   temperature?: number;
   maxTurns?: number;
+  subAgents?: Record<string, SubAgentDefinition>;
 };

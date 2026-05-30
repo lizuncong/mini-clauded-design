@@ -3,13 +3,12 @@ import type { AgentCallbacks, AgentConfig, LlmMessage, ToolDefinition } from './
 import { runAgent } from './agent';
 import { FileStore } from './file-store';
 import { createLlmClient } from './llm';
-import { runReviewAgent } from './review-agent';
-import { SYSTEM_PROMPT } from './system-prompt';
+import { createSubAgentTool } from './subagent-tool';
 import { createTools } from './tools';
 
 export type { AgentCallbacks, AgentConfig, LlmMessage, ToolDefinition };
+export type { SubAgentDefinition } from './types';
 export { type DesignFile, FileStore };
-export { SYSTEM_PROMPT };
 
 export type AgentInstance = {
   run: (
@@ -21,16 +20,27 @@ export type AgentInstance = {
 };
 
 export function createAgent(config: AgentConfig): AgentInstance {
+  if (!config.systemPrompt) {
+    throw new Error('[Agent SDK] systemPrompt is required');
+  }
+
   const fileStore = new FileStore();
   const llmClient = createLlmClient(config.apiKey, config.baseUrl);
-  const systemPrompt = config.systemPrompt || SYSTEM_PROMPT;
+  const systemPrompt = config.systemPrompt;
 
-  const runReview = async (): Promise<string> => {
-    const result = await runReviewAgent(llmClient, fileStore, undefined, config.model);
-    return `全面质量审查完成。\n\n修改的文件：\n${result.filesModified.map(f => `- ${f}`).join('\n') || '（无修改）'}\n\n审查报告：\n${result.report}`;
-  };
+  const coreTools = createTools(fileStore);
 
-  const tools = createTools(fileStore, runReview);
+  let allTools: ToolDefinition[] = coreTools;
+
+  if (config.subAgents && Object.keys(config.subAgents).length > 0) {
+    const subAgentTool = createSubAgentTool(
+      llmClient,
+      fileStore,
+      coreTools,
+      config.subAgents,
+    );
+    allTools = [...coreTools, subAgentTool];
+  }
 
   return {
     fileStore,
@@ -40,7 +50,7 @@ export function createAgent(config: AgentConfig): AgentInstance {
         callbacks,
         llmClient,
         systemPrompt,
-        tools,
+        allTools,
         existingMessages,
         {
           model: config.model,
