@@ -8,6 +8,7 @@ export function createSubAgentTool(
   _fileStore: FileStore,
   allTools: ToolDefinition[],
   subAgents: Record<string, SubAgentDefinition>,
+  defaultModel: string,
 ): ToolDefinition {
   return {
     name: 'subagent',
@@ -41,7 +42,7 @@ The sub-agent operates in an isolated context and returns structured results.`,
         return JSON.stringify({ error: `Unknown sub-agent type: ${type}` });
       }
 
-      const subAgentModel = def.model || undefined;
+      const subAgentModel = def.model || defaultModel;
       const subAgentTools = allTools.filter(tool => !def.tools || def.tools.includes(tool.name));
 
       const messages = await runAgent(

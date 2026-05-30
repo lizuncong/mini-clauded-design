@@ -38,6 +38,7 @@ export function createAgent(config: AgentConfig): AgentInstance {
       fileStore,
       coreTools,
       config.subAgents,
+      config.model,
     );
     allTools = [...coreTools, subAgentTool];
   }
