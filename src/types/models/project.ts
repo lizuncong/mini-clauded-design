@@ -1,4 +1,5 @@
-import type { ChatMessage, DesignFile, LlmMessage } from '../../app/[locale]/design/lib/types';
+import type { ChatMessage } from '../../app/[locale]/design/lib/types';
+import type { DesignFile, LlmMessage } from '../../libs/agent-sdk';
 
 export type Project = {
   id: string;

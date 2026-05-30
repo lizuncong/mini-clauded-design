@@ -29,6 +29,7 @@ export default antfu(
     ignores: [
       '.next/**/*',
       'pnpm-workspace.yaml',
+      '**/*.md',
     ],
   },
   // --- Accessibility Rules ---

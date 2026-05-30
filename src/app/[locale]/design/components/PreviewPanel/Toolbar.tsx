@@ -1,18 +1,20 @@
 'use client';
 
 import type { DeviceMode } from './types';
+import type { FileStore } from '@/libs/agent-sdk';
 import { useCallback } from 'react';
 import { downloadAsZip } from '../../lib/download';
-import { fileStore } from '../../lib/file-store';
 
 type ToolbarProps = {
   deviceMode: DeviceMode;
+  fileStore: FileStore;
   onDeviceChange: (mode: DeviceMode) => void;
   onRefresh: () => void;
 };
 
 export function Toolbar({
   deviceMode,
+  fileStore,
   onDeviceChange,
   onRefresh,
 }: ToolbarProps) {
@@ -22,7 +24,7 @@ export function Toolbar({
       return;
     }
     await downloadAsZip(files, 'design-project');
-  }, []);
+  }, [fileStore]);
   return (
     <div className="flex items-center justify-end border-b border-[#2a2a4a] bg-[#0f3460] px-4 py-3">
       <div className="flex items-center gap-1.5">

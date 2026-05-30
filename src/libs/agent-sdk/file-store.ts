@@ -1,8 +1,14 @@
-import type { DesignFile } from './types';
+export type DesignFile = {
+  path: string;
+  content: string;
+  size: number;
+  createdAt: number;
+  updatedAt: number;
+};
 
 type Listener = () => void;
 
-class FileStore {
+export class FileStore {
   private store: Map<string, DesignFile> = new Map();
   private listeners: Set<Listener> = new Set();
 
@@ -72,7 +78,14 @@ class FileStore {
     });
     this.notify();
   }
-}
 
-export const fileStore = new FileStore();
-export { FileStore };
+  toJSON(): Record<string, unknown>[] {
+    return this.getAllFiles().map(f => ({
+      path: f.path,
+      content: f.content,
+      size: f.size,
+      createdAt: f.createdAt,
+      updatedAt: f.updatedAt,
+    }));
+  }
+}

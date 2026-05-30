@@ -1,15 +1,14 @@
 'use client';
 
-import type { DesignFile } from '../../lib/types';
 import type { DeviceMode, PreviewPanelProps } from './types';
+import type { DesignFile } from '@/libs/agent-sdk';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { fileStore } from '../../lib/tools';
 import { PREVIEW_PREFIX } from '../FilePanel/types';
 import EditorComp from './Editor';
 import { Toolbar } from './Toolbar';
 import { invalidateBlobUrls, resolveWithBlobUrls } from './util';
 
-export function PreviewPanel({ activeFile }: PreviewPanelProps) {
+export function PreviewPanel({ activeFile, fileStore }: PreviewPanelProps) {
   const [refreshKey, setRefreshKey] = useState(0);
   const [deviceMode, setDeviceMode] = useState<DeviceMode>('desktop');
   const [files, setFiles] = useState<DesignFile[]>([]);
@@ -40,8 +39,8 @@ export function PreviewPanel({ activeFile }: PreviewPanelProps) {
     if (!previewFile) {
       return '';
     }
-    return resolveWithBlobUrls(previewFile.content, previewFile.path);
-  }, [previewFile, refreshKey]);
+    return resolveWithBlobUrls(fileStore, previewFile.content, previewFile.path);
+  }, [previewFile, fileStore, refreshKey]);
 
   const handleRefresh = useCallback(() => {
     invalidateBlobUrls();
@@ -52,6 +51,7 @@ export function PreviewPanel({ activeFile }: PreviewPanelProps) {
     <section className="flex h-full flex-col bg-[#0d1117]">
       <Toolbar
         deviceMode={deviceMode}
+        fileStore={fileStore}
         onDeviceChange={setDeviceMode}
         onRefresh={handleRefresh}
       />
@@ -78,7 +78,7 @@ export function PreviewPanel({ activeFile }: PreviewPanelProps) {
                     )}
               </div>
             )
-          : <EditorComp activeFile={activeFile} refreshKey={refreshKey} />}
+          : <EditorComp activeFile={activeFile} fileStore={fileStore} refreshKey={refreshKey} />}
       </div>
       {activeFile && !isPreview && (
         <div className="truncate border-t border-[#2a2a4e] bg-[#0f1929] px-4 py-1.5 text-[12px] text-[#aaa]">

@@ -1,6 +1,6 @@
 'use client';
 
-import { MODEL_LIST } from '../../design/lib/constants';
+import { MODEL_LIST } from '../../design/lib/model-config';
 
 export function ModelsFooter() {
   return (

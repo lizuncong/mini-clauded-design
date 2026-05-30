@@ -1,6 +1,7 @@
-import type { LlmMessage } from './types';
-import { callZhipuStream } from './llm';
-import { fileStore } from './tools';
+import type { FileStore } from './file-store';
+import type { LlmClient } from './llm';
+
+const MAX_REVIEW_TURNS = 8;
 
 const REVIEW_SYSTEM_PROMPT = `你是一个专业的全栈质量审查专家。你的职责是：
 1. 读取项目文件并全面分析代码质量和视觉设计
@@ -54,56 +55,56 @@ const REVIEW_SYSTEM_PROMPT = `你是一个专业的全栈质量审查专家。�
 4. 按照上述维度逐一检查，发现问题立即用 write_file 修正
 5. 输出结构化审查报告（分类列出发现的问题和修改内容）`;
 
-const REVIEW_TOOLS = [
-  {
-    type: 'function' as const,
-    function: {
-      name: 'read_file',
-      description: 'Read the content of a file',
-      parameters: {
-        type: 'object',
-        properties: {
-          path: { type: 'string', description: 'File path to read' },
+function makeReviewTools(): Array<Record<string, unknown>> {
+  return [
+    {
+      type: 'function',
+      function: {
+        name: 'read_file',
+        description: 'Read the content of a file',
+        parameters: {
+          type: 'object',
+          properties: {
+            path: { type: 'string', description: 'File path to read' },
+          },
+          required: ['path'],
         },
-        required: ['path'],
       },
     },
-  },
-  {
-    type: 'function' as const,
-    function: {
-      name: 'list_files',
-      description: 'List all files in the project',
-      parameters: {
-        type: 'object',
-        properties: {},
+    {
+      type: 'function',
+      function: {
+        name: 'list_files',
+        description: 'List all files in the project',
+        parameters: { type: 'object', properties: {} },
       },
     },
-  },
-  {
-    type: 'function' as const,
-    function: {
-      name: 'write_file',
-      description: 'Write content to a file (only for fixing issues)',
-      parameters: {
-        type: 'object',
-        properties: {
-          path: { type: 'string', description: 'File path' },
-          content: { type: 'string', description: 'File content' },
+    {
+      type: 'function',
+      function: {
+        name: 'write_file',
+        description: 'Write content to a file (only for fixing issues)',
+        parameters: {
+          type: 'object',
+          properties: {
+            path: { type: 'string', description: 'File path' },
+            content: { type: 'string', description: 'File content' },
+          },
+          required: ['path', 'content'],
         },
-        required: ['path', 'content'],
       },
     },
-  },
-];
+  ];
+}
 
-const MAX_REVIEW_TURNS = 8;
-
-export async function runVisualReviewAgent(
+export async function runReviewAgent(
+  llmClient: LlmClient,
+  fileStore: FileStore,
   onProgress?: (text: string) => void,
 ): Promise<{ report: string; filesModified: string[] }> {
-  const messages: LlmMessage[] = [];
+  const messages: Array<Record<string, unknown>> = [];
   const filesModified: string[] = [];
+  const reviewTools = makeReviewTools();
 
   messages.push({
     role: 'user',
@@ -113,9 +114,9 @@ export async function runVisualReviewAgent(
   for (let turn = 0; turn < MAX_REVIEW_TURNS; turn++) {
     onProgress?.(`\n[审查轮次 ${turn + 1}] `);
 
-    const apiResp = await callZhipuStream(
-      messages as unknown as Parameters<typeof callZhipuStream>[0],
-      REVIEW_TOOLS as unknown as Parameters<typeof callZhipuStream>[1],
+    const apiResp = await llmClient.chatStream(
+      messages,
+      reviewTools,
       REVIEW_SYSTEM_PROMPT,
       {
         onTextChunk(chunk: string) {
@@ -130,7 +131,7 @@ export async function runVisualReviewAgent(
     }
 
     const msg = choice.message;
-    const assistantMsg: LlmMessage = {
+    const assistantMsg: Record<string, unknown> = {
       role: 'assistant',
       content: msg.content || '',
     };
@@ -154,14 +155,14 @@ export async function runVisualReviewAgent(
       try {
         switch (fn.name) {
           case 'read_file':
-            result = await fileStore.readFile((input as { path: string }).path);
+            result = fileStore.readFile((input as { path: string }).path);
             break;
           case 'list_files':
             result = fileStore.listFiles().join('\n') || '(empty project)';
             break;
           case 'write_file': {
             const { path, content } = input as { path: string; content: string };
-            result = await fileStore.writeFile(path, content);
+            result = fileStore.writeFile(path, content);
             filesModified.push(path);
             break;
           }

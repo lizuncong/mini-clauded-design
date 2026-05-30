@@ -1,4 +1,4 @@
-import { fileStore } from '../../lib/tools';
+import type { FileStore } from '@/libs/agent-sdk';
 
 const MIME_TYPES: Record<string, string> = {
   css: 'text/css',
@@ -55,7 +55,7 @@ export const snakeDesignTheme: {
 
 const blobUrlCache = new Map<string, string>();
 
-export function getBlobUrl(path: string): string | null {
+export function getBlobUrl(fileStore: FileStore, path: string): string | null {
   if (blobUrlCache.has(path)) {
     return blobUrlCache.get(path) || null;
   }
@@ -77,7 +77,7 @@ export function invalidateBlobUrls(): void {
   blobUrlCache.clear();
 }
 
-export function resolveWithBlobUrls(htmlContent: string, basePath: string): string {
+export function resolveWithBlobUrls(fileStore: FileStore, htmlContent: string, basePath: string): string {
   let resolved = htmlContent;
   const dir = basePath.substring(0, basePath.lastIndexOf('/') + 1);
 
@@ -85,7 +85,7 @@ export function resolveWithBlobUrls(htmlContent: string, basePath: string): stri
     /<link\s[^>]*rel=["']stylesheet["'][^>]*href=["']([^"']+)["'][^>]*>/gi,
     (match, href) => {
       const fullPath = href.startsWith('/') ? href.slice(1) : dir + href;
-      const url = getBlobUrl(fullPath);
+      const url = getBlobUrl(fileStore, fullPath);
       if (url) {
         return match.replace(href, url);
       }
@@ -106,7 +106,7 @@ export function resolveWithBlobUrls(htmlContent: string, basePath: string): stri
           return `<script type="text/babel"${restOfTag.replace('<script', '').replace('></script>', '')}>${file.content}</script>`;
         }
       }
-      const url = getBlobUrl(fullPath);
+      const url = getBlobUrl(fileStore, fullPath);
       if (url) {
         return match.replace(src, url);
       }

@@ -1,17 +1,31 @@
 'use client';
 
-import type { ChatMessage, LlmMessage } from '../lib/types';
+import type { ChatMessage } from '../lib/types';
 import type { ChatPanelHandle } from './ChatPanel';
+import type { AgentInstance, LlmMessage } from '@/libs/agent-sdk';
 import { useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { createAgent } from '@/libs/agent-sdk';
 import { getProject, updateProjectState } from '@/libs/db/projects';
 import { useRouter } from '@/libs/i18n/navigation';
 import ResizableLayout from '../../../../components/ResizableLayout';
-import { fileStore } from '../lib/file-store';
+import { getApiKey, getBaseUrl, getModel } from '../../design/lib/model-config';
 import { ChatPanel } from './ChatPanel';
 import { FilePanel } from './FilePanel';
 import { Header } from './Header';
 import { PreviewPanel } from './PreviewPanel';
+
+function getAgentConfig() {
+  if (typeof window === 'undefined') {
+    return { apiKey: '', baseUrl: '', model: '' };
+  }
+  const baseUrl = getBaseUrl();
+  return {
+    apiKey: getApiKey(baseUrl),
+    baseUrl: baseUrl || 'https://open.bigmodel.cn/api/paas/v4',
+    model: getModel(),
+  };
+}
 
 export function DesignLayout() {
   const searchParams = useSearchParams();
@@ -21,9 +35,18 @@ export function DesignLayout() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [activeFile, setActiveFile] = useState<string | null>(null);
   const [initialConversation, setInitialConversation] = useState<LlmMessage[]>([]);
+  const [agent, setAgent] = useState<AgentInstance | null>(null);
   const prevProjectIdRef = useRef<string | null>(null);
   const currentProjectIdRef = useRef<string | null>(null);
   const chatPanelRef = useRef<ChatPanelHandle>(null);
+  const agentRef = useRef<AgentInstance | null>(null);
+
+  useEffect(() => {
+    const config = getAgentConfig();
+    const instance = createAgent(config);
+    agentRef.current = instance;
+    setAgent(instance);
+  }, []);
 
   useEffect(() => {
     if (!projectId) {
@@ -37,7 +60,7 @@ export function DesignLayout() {
     }
     currentProjectIdRef.current = projectId;
 
-    fileStore.clear();
+    agentRef.current?.fileStore.clear();
     setMessages([]);
     setActiveFile(null);
     setInitialConversation([]);
@@ -50,7 +73,7 @@ export function DesignLayout() {
       const { state, requirement } = project;
 
       if (state.files.length > 0) {
-        fileStore.setFiles(state.files);
+        agentRef.current?.fileStore.setFiles(state.files);
       }
 
       if (state.messages.length > 0) {
@@ -72,7 +95,7 @@ export function DesignLayout() {
     const timer = setTimeout(() => {
       updateProjectState(currentProjectIdRef.current!, {
         messages,
-        files: fileStore.getAllFiles(),
+        files: agentRef.current?.fileStore.getAllFiles() ?? [],
         activeFile,
         conversation: chatPanelRef.current?.getConversation() ?? [],
       });
@@ -83,6 +106,10 @@ export function DesignLayout() {
   const handleSelectFile = useCallback((path: string) => {
     setActiveFile(path);
   }, []);
+
+  if (!agent) {
+    return null;
+  }
 
   return (
     <div className="design-scrollbar flex h-screen flex-col overflow-hidden bg-[#1a1a2e] font-mono text-[#e0e0e0]">
@@ -96,6 +123,7 @@ export function DesignLayout() {
       >
         <ChatPanel
           ref={chatPanelRef}
+          agent={agent}
           messages={messages}
           setMessages={setMessages}
           setActiveFile={setActiveFile}
@@ -103,9 +131,10 @@ export function DesignLayout() {
         />
         <FilePanel
           activeFile={activeFile}
+          fileStore={agent.fileStore}
           onSelectFile={handleSelectFile}
         />
-        <PreviewPanel activeFile={activeFile} />
+        <PreviewPanel activeFile={activeFile} fileStore={agent.fileStore} />
       </ResizableLayout>
     </div>
   );

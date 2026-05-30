@@ -9,8 +9,8 @@ import { PREVIEW_PREFIX } from './types';
 import { buildTree } from './util';
 
 export { PREVIEW_PREFIX };
-export function FilePanel({ activeFile, onSelectFile }: FilePanelProps) {
-  const files = useFileStore();
+export function FilePanel({ activeFile, fileStore, onSelectFile }: FilePanelProps) {
+  const files = useFileStore(fileStore);
 
   const tree = useMemo(() => buildTree(files), [files]);
 

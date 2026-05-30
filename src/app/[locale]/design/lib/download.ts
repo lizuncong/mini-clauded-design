@@ -1,4 +1,4 @@
-import type { DesignFile } from './types';
+import type { DesignFile } from '@/libs/agent-sdk';
 import JSZip from 'jszip';
 
 export async function downloadAsZip(files: DesignFile[], projectName: string = 'project'): Promise<void> {

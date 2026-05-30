@@ -1,12 +1,13 @@
+import type { FileStore } from '@/libs/agent-sdk';
 import Editor from '@monaco-editor/react';
-import { fileStore } from '../../lib/file-store';
 import { getLanguage, snakeDesignTheme } from './util';
 
 type EditorCompProps = {
   activeFile: string | null;
+  fileStore: FileStore;
   refreshKey: number;
 };
-const EditorComp = ({ activeFile, refreshKey }: EditorCompProps) => {
+const EditorComp = ({ activeFile, fileStore, refreshKey }: EditorCompProps) => {
   const file = activeFile ? fileStore.getFile(activeFile) : null;
   const language = activeFile ? getLanguage(activeFile) : 'plaintext';
 

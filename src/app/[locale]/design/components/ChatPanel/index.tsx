@@ -1,10 +1,9 @@
 'use client';
 
 import type { Dispatch, SetStateAction } from 'react';
-import type { ChatMessage, LlmMessage } from '../../lib/types';
+import type { ChatMessage } from '../../lib/types';
+import type { AgentCallbacks, AgentInstance, LlmMessage } from '@/libs/agent-sdk';
 import { useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import { runAgent } from '../../lib/agent';
-import { fileStore } from '../../lib/file-store';
 import { ChatBubble } from './ChatBubble';
 import { ThinkingCard } from './ThinkingCard';
 import { ToolCard } from './ToolCard';
@@ -20,6 +19,7 @@ export type ChatPanelHandle = {
 };
 
 type ChatPanelProps = {
+  agent: AgentInstance;
   messages: ChatMessage[];
   setMessages: Dispatch<SetStateAction<ChatMessage[]>>;
   setActiveFile: Dispatch<SetStateAction<string | null>>;
@@ -27,7 +27,7 @@ type ChatPanelProps = {
 };
 
 export const ChatPanel = function ChatPanel(
-  { ref, messages, setMessages, setActiveFile, initialConversation }: ChatPanelProps & { ref?: React.RefObject<ChatPanelHandle | null> },
+  { ref, agent, messages, setMessages, setActiveFile, initialConversation }: ChatPanelProps & { ref?: React.RefObject<ChatPanelHandle | null> },
 ) {
   const [input, setInput] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -115,9 +115,10 @@ export const ChatPanel = function ChatPanel(
 
       let currentStreamId = '';
       let currentThinkingId = '';
+      const fileWriteSet = new Set<string>();
 
       try {
-        conversationRef.current = await runAgent(input, {
+        const callbacks: AgentCallbacks = {
           onText(text: string) {
             addMessage({
               id: generateId(),
@@ -165,6 +166,9 @@ export const ChatPanel = function ChatPanel(
               toolArgs: JSON.stringify(inputArgs),
               timestamp: Date.now(),
             });
+            if (name === 'write_file' && inputArgs.path) {
+              fileWriteSet.add(inputArgs.path as string);
+            }
           },
           onToolResult(name: string, result: string) {
             addMessage({
@@ -184,10 +188,9 @@ export const ChatPanel = function ChatPanel(
               content: `完成 (输入: ${usage.prompt_tokens} tokens, 输出: ${usage.completion_tokens} tokens)`,
               timestamp: Date.now(),
             });
-            const files = fileStore.getAllFiles();
-            const indexHtml = files.find(f => f.path === 'index.html');
-            if (indexHtml) {
-              setActiveFile('index.html');
+            const fileList = [...fileWriteSet];
+            if (fileList.length > 0) {
+              setActiveFile(fileList[fileList.length - 1]!);
             }
           },
           onSnip(before: number, after: number) {
@@ -198,7 +201,9 @@ export const ChatPanel = function ChatPanel(
               timestamp: Date.now(),
             });
           },
-        }, conversationRef.current);
+        };
+
+        conversationRef.current = await agent.run(input, callbacks, conversationRef.current);
       } catch (err) {
         finalizeStream();
         addMessage({
@@ -211,7 +216,7 @@ export const ChatPanel = function ChatPanel(
 
       setIsRunning(false);
     },
-    [isRunning, addMessage, updateLastStreaming, updateLastThinking, collapseThinking, finalizeStream, setActiveFile],
+    [isRunning, agent, addMessage, updateLastStreaming, updateLastThinking, collapseThinking, finalizeStream, setActiveFile],
   );
   useImperativeHandle(ref, () => ({
     onSend,

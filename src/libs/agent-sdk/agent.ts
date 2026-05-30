@@ -1,8 +1,10 @@
-import type { AgentCallbacks, LlmMessage } from './types';
-import { MAX_TOKENS, MAX_TURNS, TOKEN_PER_CHAR } from './constants';
-import { callZhipuStream } from './llm';
-import { SYSTEM_PROMPT } from './system-prompt';
-import { dispatchTool, executeSnips, getToolDefinitions, tagUserMessage, trimMessages } from './tools';
+import type { LlmClient } from './llm';
+import type { AgentCallbacks, LlmMessage, ToolDefinition } from './types';
+import { executeSnips, registerSnip, tagUserMessage, trimMessages } from './tools';
+
+const DEFAULT_MAX_TOKENS = 96000;
+const TOKEN_PER_CHAR = 0.3;
+const DEFAULT_MAX_TURNS = 100;
 
 function estimateTokens(messages: LlmMessage[], systemPrompt: string): number {
   let chars = systemPrompt.length;
@@ -27,12 +29,18 @@ function estimateTokens(messages: LlmMessage[], systemPrompt: string): number {
 export async function runAgent(
   userInput: string,
   callbacks: AgentCallbacks,
+  llmClient: LlmClient,
+  systemPrompt: string,
+  tools: ToolDefinition[],
   existingMessages: LlmMessage[] = [],
+  options: { maxTokens?: number; maxTurns?: number } = {},
 ): Promise<LlmMessage[]> {
-  const messages: LlmMessage[] = existingMessages.length > 0 ? [...existingMessages] : [];
-  const rawTools = getToolDefinitions();
+  const maxTokens = options.maxTokens || DEFAULT_MAX_TOKENS;
+  const maxTurns = options.maxTurns || DEFAULT_MAX_TURNS;
 
-  const tools = rawTools.map(t => ({
+  const messages: LlmMessage[] = existingMessages.length > 0 ? [...existingMessages] : [];
+
+  const openAiTools = tools.map(t => ({
     type: 'function' as const,
     function: {
       name: t.name,
@@ -41,22 +49,23 @@ export async function runAgent(
     },
   }));
 
+  let pendingInput = userInput;
   let turnCount = 0;
 
-  while (turnCount < MAX_TURNS) {
+  while (turnCount < maxTurns) {
     turnCount++;
 
-    if (userInput) {
-      const taggedContent = tagUserMessage(userInput);
+    if (pendingInput) {
+      const taggedContent = tagUserMessage(pendingInput);
       messages.push({ role: 'user', content: taggedContent });
     }
 
-    const estimated = estimateTokens(messages, SYSTEM_PROMPT);
-    if (estimated > MAX_TOKENS * 0.8) {
-      const idsToRemove = executeSnips(messages);
+    const estimated = estimateTokens(messages, systemPrompt);
+    if (estimated > maxTokens * 0.8) {
+      const idsToRemove = executeSnips(messages as Array<{ role: string; content: string | Array<Record<string, unknown>> }>);
       if (idsToRemove.size > 0) {
         const before = messages.length;
-        const trimmed = trimMessages([...messages], idsToRemove) as LlmMessage[];
+        const trimmed = trimMessages([...messages], idsToRemove);
         messages.length = 0;
         messages.push(...trimmed);
         callbacks.onSnip?.(before, messages.length);
@@ -65,10 +74,10 @@ export async function runAgent(
 
     callbacks.onText(`\n[Turn ${turnCount}] `);
 
-    const apiResp = await callZhipuStream(
-      messages as unknown as Parameters<typeof callZhipuStream>[0],
-      tools as unknown as Parameters<typeof callZhipuStream>[1],
-      SYSTEM_PROMPT,
+    const apiResp = await llmClient.chatStream(
+      messages as Array<Record<string, unknown>>,
+      openAiTools,
+      systemPrompt,
       {
         onTextChunk(chunk: string) {
           callbacks.onStreamText(chunk);
@@ -103,32 +112,37 @@ export async function runAgent(
 
     for (const tc of msg.tool_calls) {
       const fn = tc.function;
-      const input
-        = typeof fn.arguments === 'string'
-          ? (JSON.parse(fn.arguments) as Record<string, unknown>)
-          : (fn.arguments as Record<string, unknown>);
+      const input = typeof fn.arguments === 'string'
+        ? (JSON.parse(fn.arguments) as Record<string, unknown>)
+        : (fn.arguments as Record<string, unknown>);
       callbacks.onToolCall(fn.name, input);
 
+      let result: string;
       try {
-        const result = await dispatchTool(fn.name, input);
-        callbacks.onToolResult(fn.name, result);
-        messages.push({
-          role: 'tool',
-          tool_call_id: tc.id,
-          content: typeof result === 'string' ? result : JSON.stringify(result),
-        });
+        if (fn.name === 'snip') {
+          const { from_id, to_id, reason } = input as { from_id: string; to_id: string; reason: string };
+          registerSnip(from_id, to_id, reason || '');
+          result = 'Snip registered.';
+        } else {
+          const tool = tools.find(t => t.name === fn.name);
+          if (!tool) {
+            result = `Unknown tool: ${fn.name}`;
+          } else {
+            result = await tool.execute(input);
+          }
+        }
       } catch (err) {
-        const errContent = `Error: ${err instanceof Error ? err.message : String(err)}`;
-        callbacks.onToolResult(fn.name, errContent);
-        messages.push({
-          role: 'tool',
-          tool_call_id: tc.id,
-          content: errContent,
-        });
+        result = `Error: ${err instanceof Error ? err.message : String(err)}`;
       }
+      callbacks.onToolResult(fn.name, result);
+      messages.push({
+        role: 'tool',
+        tool_call_id: tc.id,
+        content: result,
+      });
     }
 
-    userInput = '';
+    pendingInput = '';
   }
 
   callbacks.onText('\n[Agent] 达到最大轮次限制\n');

@@ -1,10 +1,9 @@
 'use client';
 
-import type { DesignFile } from './types';
+import type { DesignFile, FileStore } from '@/libs/agent-sdk';
 import { useEffect, useState } from 'react';
-import { fileStore } from './file-store';
 
-export function useFileStore() {
+export function useFileStore(fileStore: FileStore) {
   const [files, setFiles] = useState<DesignFile[]>(fileStore.getAllFiles());
 
   useEffect(() => {
@@ -13,7 +12,7 @@ export function useFileStore() {
     });
 
     return unsubscribe;
-  }, []);
+  }, [fileStore]);
 
   return files;
 }
