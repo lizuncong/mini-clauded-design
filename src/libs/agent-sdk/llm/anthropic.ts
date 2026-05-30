@@ -1,4 +1,5 @@
 import type { CallOptions, LlmResponse, LlmStreamCallbacks } from './types';
+import { getMaxOutputTokens } from '@/app/[locale]/design/lib/model-config';
 
 const ANTHROPIC_VERSION = '2023-06-01';
 
@@ -206,7 +207,7 @@ export function createAnthropicClient(baseUrl: string, apiKey: string): {
         model: options.model || 'unknown',
         system: systemPrompt,
         messages: convertMessagesToAnthropic(messages),
-        max_tokens: options.maxTokens || 96000,
+        max_tokens: options.maxTokens || getMaxOutputTokens(options.model),
         temperature: options.temperature ?? 0.7,
         stream: true,
       };

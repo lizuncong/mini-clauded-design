@@ -68,9 +68,9 @@ export function hasApiKey(): boolean {
 
 export function getModel(): string {
   if (typeof window === 'undefined') {
-    return 'glm-4.7-flash';
+    return 'glm-4.6v-flash';
   }
-  return localStorage.getItem(STORAGE_KEYS.MODEL) || 'glm-4.7-flash';
+  return localStorage.getItem(STORAGE_KEYS.MODEL) || 'glm-4.6v-flash';
 }
 
 export function setModel(model: string): void {
@@ -86,4 +86,36 @@ export function getBaseUrl(): string {
 
 export function setBaseUrl(url: string): void {
   localStorage.setItem(STORAGE_KEYS.BASE_URL, url);
+}
+
+function parseOutputTokens(output?: string): number {
+  if (!output) {
+    return 4096;
+  }
+
+  const match = output.match(/^(\d+(?:\.\d+)?)([KMG])?$/i);
+  if (!match) {
+    return 4096;
+  }
+
+  const num = Number.parseFloat(match[1] || '0');
+  const unit = (match[2] || '').toUpperCase();
+
+  switch (unit) {
+    case 'K': return Math.round(num * 1024);
+    case 'M': return Math.round(num * 1024 * 1024);
+    case 'G': return Math.round(num * 1024 * 1024 * 1024);
+    default: return Math.round(num);
+  }
+}
+
+export function getMaxOutputTokens(modelId?: string): number {
+  const model = modelId || getModel() || 'glm-4.6v-flash';
+  const modelConfig = MODEL_LIST.find(m => m.id === model);
+
+  if (!modelConfig?.output) {
+    return 4096;
+  }
+
+  return parseOutputTokens(modelConfig.output);
 }

@@ -1,4 +1,5 @@
 import type { CallOptions, LlmResponse, LlmStreamCallbacks } from './types';
+import { getMaxOutputTokens } from '@/app/[locale]/design/lib/model-config';
 
 export function createOpenAiClient(baseUrl: string, apiKey: string): {
   chatStream: (
@@ -16,7 +17,7 @@ export function createOpenAiClient(baseUrl: string, apiKey: string): {
       const body: Record<string, unknown> = {
         model: options.model || 'unknown',
         messages: [{ role: 'system', content: systemPrompt }, ...messages],
-        max_tokens: options.maxTokens || 96000,
+        max_tokens: options.maxTokens || getMaxOutputTokens(options.model),
         temperature: options.temperature ?? 0.7,
         stream: true,
         stream_options: { include_usage: true },

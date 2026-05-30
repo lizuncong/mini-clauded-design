@@ -1,8 +1,8 @@
 import type { LlmClient } from './llm';
 import type { AgentCallbacks, LlmMessage, ToolDefinition } from './types';
+import { getMaxOutputTokens } from '@/app/[locale]/design/lib/model-config';
 import { executeSnips, registerSnip, tagUserMessage, trimMessages } from './tools';
 
-const DEFAULT_MAX_TOKENS = 96000;
 const TOKEN_PER_CHAR = 0.3;
 const DEFAULT_MAX_TURNS = 100;
 
@@ -35,7 +35,8 @@ export async function runAgent(
   existingMessages: LlmMessage[] = [],
   options: { maxTokens?: number; maxTurns?: number; model?: string } = {},
 ): Promise<LlmMessage[]> {
-  const maxTokens = options.maxTokens || DEFAULT_MAX_TOKENS;
+  const model = options.model || 'glm-4.6v-flash';
+  const maxTokens = options.maxTokens || getMaxOutputTokens(model);
   const maxTurns = options.maxTurns || DEFAULT_MAX_TURNS;
 
   const messages: LlmMessage[] = existingMessages.length > 0 ? [...existingMessages] : [];
